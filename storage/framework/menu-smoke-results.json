@@ -1,0 +1,450 @@
+[
+    {
+        "route": "login",
+        "uri": "admin/login",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "login",
+        "uri": "admin/login",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "activity-logs.index",
+        "uri": "admin/log-aktivitas",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "activity-logs.index",
+        "uri": "admin/log-aktivitas",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "beranda",
+        "uri": "admin/beranda",
+        "mode": "page",
+        "status": 302,
+        "error": null
+    },
+    {
+        "route": "beranda",
+        "uri": "admin/beranda",
+        "mode": "ajax",
+        "status": 302,
+        "error": null
+    },
+    {
+        "route": "dashboard",
+        "uri": "admin/dashboard",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "dashboard",
+        "uri": "admin/dashboard",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "st-penjualan.index",
+        "uri": "admin/st-penjualan",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "st-penjualan.index",
+        "uri": "admin/st-penjualan",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pembayaran.index",
+        "uri": "admin/pembayaran",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pembayaran.index",
+        "uri": "admin/pembayaran",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pemasukan.index",
+        "uri": "admin/keuangan/pemasukan",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pemasukan.index",
+        "uri": "admin/keuangan/pemasukan",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengeluaran.index",
+        "uri": "admin/keuangan/pengeluaran",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengeluaran.index",
+        "uri": "admin/keuangan/pengeluaran",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "hutang.index",
+        "uri": "admin/keuangan/hutang",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "hutang.index",
+        "uri": "admin/keuangan/hutang",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "piutang.index",
+        "uri": "admin/keuangan/piutang",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "piutang.index",
+        "uri": "admin/keuangan/piutang",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "kategori-transaksi.index",
+        "uri": "admin/keuangan/kategori-transaksi",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "kategori-transaksi.index",
+        "uri": "admin/keuangan/kategori-transaksi",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "mutasi-saldo.index",
+        "uri": "admin/keuangan/mutasi-saldo",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "mutasi-saldo.index",
+        "uri": "admin/keuangan/mutasi-saldo",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "laporan-arus-kas.index",
+        "uri": "admin/keuangan/laporan-arus-kas",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "laporan-arus-kas.index",
+        "uri": "admin/keuangan/laporan-arus-kas",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "arsip-customer.index",
+        "uri": "admin/customer/customer/arsip-customer",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "arsip-customer.index",
+        "uri": "admin/customer/customer/arsip-customer",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "customer.index",
+        "uri": "admin/customer/customer",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "customer.index",
+        "uri": "admin/customer/customer",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "prospek.index",
+        "uri": "admin/customer/prospek",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "prospek.index",
+        "uri": "admin/customer/prospek",
+        "mode": "ajax",
+        "status": 200,
+        "error": "Exception Message:\r\n\r\nSQLSTATE[42S02]: Base table or view not found: 1146 Table 'mutiara_bumi_hijau.prospek_nasabah' doesn't exist (Connection: mysql, SQL: select count(*) as aggregate from `prospek_nasabah`)"
+    },
+    {
+        "route": "upload-file.index",
+        "uri": "admin/customer/upload-file",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "upload-file.index",
+        "uri": "admin/customer/upload-file",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "legalitas.index",
+        "uri": "admin/legalitas",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "legalitas.index",
+        "uri": "admin/legalitas",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "marketing.index",
+        "uri": "admin/marketing",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "marketing.index",
+        "uri": "admin/marketing",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "lokasi-kavling.index",
+        "uri": "admin/master/lokasi-kavling",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "lokasi-kavling.index",
+        "uri": "admin/master/lokasi-kavling",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "kavling.index",
+        "uri": "admin/master/kavling",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "kavling.index",
+        "uri": "admin/master/kavling",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "notaris.index",
+        "uri": "admin/master/notaris",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "notaris.index",
+        "uri": "admin/master/notaris",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "bank.index",
+        "uri": "admin/master/bank",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "bank.index",
+        "uri": "admin/master/bank",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "kategori.index",
+        "uri": "admin/master/kategori",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "kategori.index",
+        "uri": "admin/master/kategori",
+        "mode": "ajax",
+        "status": 500,
+        "error": "{ \"message\": \"Class \\\"App\\\\Models\\\\Kategori\\\" not found\", \"exception\": \"Error\", \"file\": \"D:\\\\0_Kavling & Perum Demo\\\\kav_mutiara_bumi_hijau\\\\app\\\\Http\\\\Controllers\\\\Master\\\\KategoriController.php\", \"line\": 22, \"trace\": [ { \"file\": \"D:\\\\0_Kavling & Perum Demo\\\\kav_mutiara_bumi_hijau\\\\vendor\\\\laravel\\\\framework\\\\src\\\\Illuminate\\\\Routing\\\\ControllerDispatcher.php\", \"line\": 47, \"function\": \"index\", \"class\": \"App\\\\Http\\\\Controllers\\\\Master\\\\KategoriController\", \"type\": \"->\" }, { \"file\": \"D:\\\\0_Kavling & Perum Demo\\\\kav_mutiara_bumi_hijau\\\\vendor\\\\laravel\\\\framework\\\\src\\\\Illuminate\\\\Routing\\\\Route.php\", \"line\": 266, \"function\": \"dispatch\", \"class\""
+    },
+    {
+        "route": "pengaturan-profile.index",
+        "uri": "admin/pengaturan/pengaturan-profile",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturan-profile.index",
+        "uri": "admin/pengaturan/pengaturan-profile",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturan-media.index",
+        "uri": "admin/pengaturan/pengaturan-media",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturan-media.index",
+        "uri": "admin/pengaturan/pengaturan-media",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturanLanding.index",
+        "uri": "admin/pengaturan/pengaturanLanding",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturanLanding.index",
+        "uri": "admin/pengaturan/pengaturanLanding",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengguna.index",
+        "uri": "admin/pengaturan/pengguna",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengguna.index",
+        "uri": "admin/pengaturan/pengguna",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "hak-akses.index",
+        "uri": "admin/pengaturan/hak-akses",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "hak-akses.index",
+        "uri": "admin/pengaturan/hak-akses",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "list-penjualan.index",
+        "uri": "admin/pengaturan/list-penjualan",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "list-penjualan.index",
+        "uri": "admin/pengaturan/list-penjualan",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "template-pesan.index",
+        "uri": "admin/pengaturan-wa/template-pesan",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "template-pesan.index",
+        "uri": "admin/pengaturan-wa/template-pesan",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturan-koneksi.index",
+        "uri": "admin/pengaturan-wa/pengaturan-koneksi",
+        "mode": "page",
+        "status": 200,
+        "error": null
+    },
+    {
+        "route": "pengaturan-koneksi.index",
+        "uri": "admin/pengaturan-wa/pengaturan-koneksi",
+        "mode": "ajax",
+        "status": 200,
+        "error": null
+    }
+]

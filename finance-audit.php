@@ -1,0 +1,7 @@
+﻿<?php
+require __DIR__.'/vendor/autoload.php';$app=require __DIR__.'/bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();$db=Illuminate\Support\Facades\DB::connection();
+$backup=['database'=>$db->getDatabaseName(),'created_at'=>date(DATE_ATOM),'tables'=>[]];
+foreach(['hutang','piutang','pemasukan','pengeluaran','mutasi_saldo','customer','transaksi_kavling','bank','kategori_transaksi'] as $table){$backup['tables'][$table]=$db->table($table)->get()->all();echo $table.': '.count($backup['tables'][$table]).PHP_EOL;}
+$path=storage_path('app/private/backups/finance-audit-'.date('Ymd-His').'.json');$json=json_encode($backup,JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT);if(file_put_contents($path,$json,LOCK_EX)!==strlen($json))throw new RuntimeException('Backup failed');echo 'BACKUP '.basename($path).PHP_EOL;
+foreach(['hutang'=>'pengeluaran','piutang'=>'pemasukan'] as $table=>$ledger){foreach($db->table($table)->get() as $row){$sum=$db->table($ledger)->where('id_'.$table,$row->id)->sum('nominal');if($sum!=$row->terbayar || $row->nominal-$row->terbayar!=$row->sisa_bayar)echo json_encode(['type'=>$table,'id'=>$row->id,'nominal'=>$row->nominal,'terbayar'=>$row->terbayar,'sisa'=>$row->sisa_bayar,'linked_receipts'=>$sum]).PHP_EOL;}}
+echo 'UNLINKED SALES '.json_encode($db->table('pemasukan')->where('id_customer','>',0)->where(fn($q)=>$q->whereNull('id_piutang')->orWhere('id_piutang',0))->get(['id','id_customer','nominal','id_kategori_transaksi','id_bank'])).PHP_EOL;
