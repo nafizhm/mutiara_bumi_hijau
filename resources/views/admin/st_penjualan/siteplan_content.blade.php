@@ -1,11 +1,13 @@
+<div class="siteplan-actions">
 <a href="{{ route('denah-penjualan.cetak.pdf', $lokasi->id) }}" target="_blank" class="btn btn-warning btn-sm">
     Cetak Denah PDF
 </a>
 <a href="{{ route('denah-penjualan.cetak.jpg', $lokasi->id) }}" target="_blank" class="btn btn-info btn-sm">
     Download Denah JPG
 </a>
+</div>
 
-<div class="svg-container mt-3">
+<div class="svg-container">
     <button class="reset-button btn btn-success btn-sm d-none"
         style="position: absolute; top: 10px; left: 10px; z-index: 10;">
         Reset Siteplan

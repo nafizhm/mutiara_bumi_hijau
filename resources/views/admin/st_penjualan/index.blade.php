@@ -128,39 +128,21 @@
                     <h5 class="card-title">Lokasi Kavling</h5>
                 </div>
                 <div class="card-body">
-                    <!-- Tabs -->
-                    <ul class="nav nav-tabs mb-3" id="lokasiTab" role="tablist">
-                        @foreach ($lokasiKavling as $index => $kav)
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link {{ $index == 0 ? 'active' : '' }}" id="lokasi-{{ $kav->id }}-tab"
-                                    data-bs-toggle="tab" href="#lokasi-{{ $kav->id }}" role="tab"
-                                    aria-controls="lokasi-{{ $kav->id }}"
-                                    aria-selected="{{ $index == 0 ? 'true' : 'false' }}"
-                                    onclick="loadSiteplanData({{ $kav->id }})">
-                                    {{ $kav->nama_kavling }}
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-
-                    <!-- Tab Content -->
-                    <div class="tab-content" id="lokasiTabContent">
-                        @foreach ($lokasiKavling as $index => $kav)
-                            <div class="tab-pane fade {{ $index == 0 ? 'show active' : '' }}"
-                                id="lokasi-{{ $kav->id }}" role="tabpanel"
-                                aria-labelledby="lokasi-{{ $kav->id }}-tab" data-id-lokasi="{{ $kav->id }}">
-
-                                @if ($index == 0)
-                                    <div class="siteplan-content"></div>
-                                @else
-                                    <div class="siteplan-content">
-                                        <div class="text-center py-4">
-                                            <p>Click to load siteplan data</p>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <label for="lokasi-siteplan" class="mb-0">Lokasi Kavling</label>
+                        <select id="lokasi-siteplan" class="form-select form-select-sm" style="width: 280px; max-width: 100%;" @disabled($lokasiKavling->isEmpty())>
+                            @forelse ($lokasiKavling as $kav)
+                                <option value="{{ $kav->id }}">{{ $kav->nama_kavling }}</option>
+                            @empty
+                                <option value="">Belum ada lokasi kavling</option>
+                            @endforelse
+                        </select>
+                        <div id="siteplan-actions" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                    <div id="siteplan-content" class="siteplan-content" aria-live="polite">
+                        @if ($lokasiKavling->isEmpty())
+                            <div class="alert alert-info">Belum ada siteplan yang dapat ditampilkan.</div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -635,10 +617,13 @@
             document.body.removeChild(form);
         });
 
-        let loadedSiteplans = [];
+        let siteplanRequest = null;
 
         $(document).ready(function() {
-            const firstLocationId = $('[data-id-lokasi]').first().data('id-lokasi');
+            $('#lokasi-siteplan').on('change', function() {
+                loadSiteplanData(this.value);
+            });
+            const firstLocationId = $('#lokasi-siteplan').val();
             if (firstLocationId) {
                 loadSiteplanData(firstLocationId);
             }
@@ -653,12 +638,18 @@
         });
 
         function loadSiteplanData(idLokasi) {
-            if (loadedSiteplans.includes(idLokasi)) {
-                return;
+            if (siteplanRequest) {
+                siteplanRequest.abort();
+                siteplanRequest = null;
             }
 
-            const tabPane = $(`#lokasi-${idLokasi}`);
-            const contentDiv = tabPane.find('.siteplan-content');
+            const contentDiv = $('#siteplan-content');
+            contentDiv.empty();
+            $('#siteplan-actions').empty();
+
+            if (!idLokasi) {
+                return;
+            }
 
             if (!contentDiv.find('.loading-spinner').length) {
                 contentDiv.html(`
@@ -669,21 +660,23 @@
                 `);
             }
 
-            $.ajax({
+            siteplanRequest = $.ajax({
                 url: `{{ route('st-penjualan.load', ['id_lokasi' => ':id']) }}`.replace(':id', idLokasi),
                 type: 'GET',
                 success: function(response) {
                     if (response.success) {
                         contentDiv.html(response.html);
-                        loadedSiteplans.push(idLokasi);
+                        contentDiv.find('.siteplan-actions').children().appendTo('#siteplan-actions');
+                        contentDiv.find('.siteplan-actions').remove();
 
-                        const svgElement = tabPane.find('svg').get(0);
-                        const svgContainer = tabPane.find('.svg-container').get(0);
-                        const resetButton = tabPane.find('.reset-button').get(0);
+                        const svgElement = contentDiv.find('svg').get(0);
+                        const svgContainer = contentDiv.find('.svg-container').get(0);
+                        const resetButton = contentDiv.find('.reset-button').get(0);
                         if (svgElement && svgContainer && resetButton) {
                             initializeSVGControls(svgElement, svgContainer, resetButton);
                         }
                     } else {
+                        contentDiv.html('<div class="alert alert-danger">Gagal memuat siteplan. Silakan pilih ulang lokasi.</div>');
                         audio.play();
                         toastr.error("Gagal memuat siteplan.", "GAGAL!", {
                             progressBar: true,
@@ -693,6 +686,10 @@
                     }
                 },
                 error: function(xhr, status, error) {
+                    if (status === 'abort') {
+                        return;
+                    }
+
                     contentDiv.html(`
                         <div class="alert alert-danger">
                             Gagal memuat siteplan. Silakan coba lagi.
