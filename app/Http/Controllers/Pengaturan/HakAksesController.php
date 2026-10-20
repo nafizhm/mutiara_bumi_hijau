@@ -14,7 +14,7 @@ class HakAksesController extends Controller
 {
     public static function getUserPermissions()
     {
-        $routeName = request()->route()->getName();
+        $routeName = \App\Services\MenuAccess::menu(request()) ?? request()->route()->getName();
         $userId    = Auth::id();
 
         $menu = Menu::where('route_name', $routeName)->first();

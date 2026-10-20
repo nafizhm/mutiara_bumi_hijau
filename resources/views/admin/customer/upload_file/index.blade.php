@@ -212,7 +212,7 @@
                                         <a href="${file.download_url}" class="btn btn-sm btn-success" download>Download</a>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteFile(${file.id})">Hapus</button>
+                                        ${permissions.hapus == 1 ? `<button class="btn btn-sm btn-danger" onclick="deleteFile(${file.id})">Hapus</button>` : ''}
                                     </td>
                                 </tr>
                             `);

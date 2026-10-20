@@ -551,6 +551,9 @@ class PembayaranController extends Controller
                     </div>';
                 })
                 ->addColumn('action', function ($row) use ($id, $firstId) {
+                    if (!\App\Services\ReceivablePayment::canManage(auth()->id(), 'pembayaran.index', 'edit')) {
+                        return '';
+                    }
                     $deleteUrl = route('pembayaran.delete-tagihan', $row->id);
 
                     if ($row->id == $firstId) {
@@ -690,6 +693,10 @@ class PembayaranController extends Controller
                     </div>';
                 }
 
+                if (!\App\Services\ReceivablePayment::canManage(auth()->id(), 'pembayaran.index', 'edit')) {
+                    $action = preg_replace('/<form\b[^>]*>.*?<\/form>/s', '', $action);
+                    $action = preg_replace('/<button\b[^>]*btn-kirim-pemasukan[^>]*>.*?<\/button>/s', '', $action);
+                }
                 $item->action = $action;
             }
 

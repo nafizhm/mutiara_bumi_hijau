@@ -127,9 +127,11 @@
                                 <div class="d-flex align-items-center">
                                     <h5>- Pembayaran -</h5>
                                 </div>
+                                @if (\App\Services\ReceivablePayment::canManage(auth()->id(), 'pembayaran.index', 'edit'))
                                 <button class="btn btn-success btn-sm" data-bs-toggle="modal"
                                     data-bs-target="#modalPemasukan"><i class="fa fa-money-bill"></i>
                                     Tambah Pembayaran</button>
+                                @endif
                             </div>
 
                             <table class="table table-bordered table-pemasukan">
@@ -970,8 +972,11 @@
                             url: form.attr('action'),
                             method: 'POST',
                             data: form.serialize(),
+                            dataType: 'json',
+                            headers: {Accept: 'application/json'},
                             success: function(response) {
-                                audio.play();
+                                resolve(true);
+                                audio.play().catch(function() {});
                                 toastr.success("Pemasukan telah dihapus!",
                                     "BERHASIL", {
                                         progressBar: true,
@@ -987,13 +992,16 @@
 
                                 Swal.close();
                             },
-                            error: function() {
-                                audio.play();
-                                toastr.error("Gagal menghapus data.", "GAGAL!", {
-                                    progressBar: true,
-                                    timeOut: 3500,
-                                    positionClass: "toast-bottom-right"
-                                });
+                            error: function(xhr) {
+                                resolve(false);
+                                const response = xhr.responseJSON || {};
+                                let message = 'Gagal menghapus pembayaran. Silakan coba kembali.';
+                                if (xhr.status === 403) message = 'Anda tidak memiliki izin Edit Pembayaran untuk menghapus pembayaran.';
+                                else if (xhr.status === 419) message = 'Sesi telah berakhir. Muat ulang halaman lalu coba kembali.';
+                                else if (xhr.status === 404) message = 'Pembayaran atau tagihan terkait tidak ditemukan. Muat ulang halaman.';
+                                else if (xhr.status === 422) message = response.errors ? Object.values(response.errors).flat().join(' ') : (response.message || message);
+                                toastr.error(message, 'GAGAL!');
+                                Swal.showValidationMessage(message);
 
                                 btnText.innerHTML = `Ya, Hapus`;
                                 confirmBtn.disabled = false;

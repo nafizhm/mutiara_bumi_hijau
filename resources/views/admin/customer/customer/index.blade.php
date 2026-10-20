@@ -128,7 +128,7 @@
 @push('scripts')
     <script>
         var permissions = @json($permissions);
-        var showActionColumn = (permissions['hapus'] == 1);
+        var showActionColumn = (permissions['edit'] == 1 || permissions['hapus'] == 1);
 
         $(document).ready(function() {
             $('.select-lokasi').select2({

@@ -88,7 +88,8 @@ class LegalitasController extends Controller
                 return $customer->keterangan_legalitas ?? '';
             })
 
-            ->addColumn('action', function ($row) {
+            ->addColumn('action', function ($row) use ($permissions) {
+                if (!$permissions['edit']) return '';
                 $customer = $row->customer->first();
 
                 if (!$customer) {

@@ -85,7 +85,7 @@
 
         $(function() {
             var permissions = @json($permissions);
-            var showActionColumn = (permissions['edit'] == 1 || permissions['hapus'] == 1);
+            var showActionColumn = true;
 
             var table = $('.data-table').DataTable({
                 processing: false,

@@ -231,6 +231,26 @@ class FinanceSimulationTest extends TestCase
         $this->assertSame($count, DB::table('pemasukan')->count());
     }
 
+    public function test_delete_sales_payment_uses_edit_permission_and_restores_balance(): void
+    {
+        $this->postJson('/admin/customer/customer', $this->customerInput(1, 'Booking'))->assertOk();
+        $id = (int) DB::table('customer')->max('id');
+        $payload = ['tanggal_pembayaran' => '2026-01-11', 'nominal_bayar' => 100000,
+            'id_bank' => 9, 'id_kategori_transaksi' => 28];
+        $this->postJson('/admin/pembayaran/tambah-pemasukan/'.$id, $payload)->assertOk();
+        $paymentId = DB::table('pemasukan')->where('id_customer', $id)->max('id');
+        $menuId = DB::table('menu')->where('route_name', 'pembayaran.index')->value('id');
+        $permission = DB::table('hak_akses')->where('id_user', 1)->where('id_menu', $menuId);
+        $permission->update(['hapus' => 1, 'edit' => 0]);
+        $this->deleteJson('/admin/pembayaran/delete-pemasukan/'.$paymentId)->assertForbidden();
+        $this->assertDatabaseHas('pemasukan', ['id' => $paymentId]);
+        $permission->update(['hapus' => 0, 'edit' => 1]);
+        $this->deleteJson('/admin/pembayaran/delete-pemasukan/'.$paymentId)
+            ->assertOk()->assertJsonPath('success', true)->assertJsonPath('sisa_bayar', '900.000');
+        $this->assertDatabaseMissing('pemasukan', ['id' => $paymentId]);
+        $this->assertDatabaseHas('piutang', ['id_customer' => $id, 'terbayar' => 100000, 'sisa_bayar' => 900000]);
+    }
+
     public function test_sales_payment_accepts_no_attachment_and_no_description(): void
     {
         $this->postJson('/admin/customer/customer', $this->customerInput(1, 'Booking'))->assertOk();

@@ -82,7 +82,8 @@ class LokasiKavlingController extends Controller
 
             return DataTables::of($kavlings)
                 ->addIndexColumn()
-                ->addColumn('action', function ($row) {
+                ->addColumn('action', function ($row) use ($permissions) {
+                    if (!$permissions['edit']) return '';
                     $editUrl = route('lokasi-kavling.editDetail', $row->id);
 
                     $btn  = '<div class="d-flex justify-content-center">';

@@ -193,7 +193,7 @@
 
         var audio = new Audio('{{ asset('audio/notification.ogg') }}');
         var permissions = @json($permissions);
-        var showActionColumn = (permissions['edit'] == 1 || permissions['hapus'] == 1);
+        var showActionColumn = (permissions['edit'] == 1 || permissions['hapus'] == 1 || @json(\App\Services\ReceivablePayment::canManage(auth()->id(), 'pengeluaran.index', 'tambah')));
 
         $(function() {
             var table = $('.data-table').DataTable({
