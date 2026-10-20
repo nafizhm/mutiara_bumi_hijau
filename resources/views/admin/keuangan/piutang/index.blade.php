@@ -55,6 +55,7 @@
                     @csrf
                     <input type="hidden" id="primary_id" name="primary_id">
                     <div class="modal-body">
+                        <div id="salesEditInfo" class="alert alert-info d-none">Ubah nominal total piutang sesuai harga yang disepakati. Sisa tagihan dihitung kembali dari pembayaran yang sudah tercatat. Perubahan ini berlaku pada tagihan piutang ini.</div>
                         <div class="form-group row">
                             <label for="tanggal_piutang" class="col-sm-3 col-form-label">Tanggal Piutang</label>
                             <div class="col-sm-5">
@@ -253,6 +254,10 @@
             var url = $(this).data('url');
             $.get(url, function(response) {
                 if (response.status === 'success') {
+                    const sales = Boolean(Number(response.data.id_customer));
+                    $('#salesEditInfo').toggleClass('d-none', !sales);
+                    $('#tanggal_piutang').prop('readonly', sales);
+                    $('#id_bank, #lampiran').prop('disabled', sales);
                     $('#primary_id').val(response.data.id);
                     $('#tanggal_piutang').val(response.data.tanggal_piutang);
                     $('#deskripsi').val(response.data.deskripsi);
@@ -291,6 +296,9 @@
 
         $('#modalForm').on('hidden.bs.modal', function() {
             $('#formData')[0].reset();
+            $('#salesEditInfo').addClass('d-none');
+            $('#tanggal_piutang').prop('readonly', false);
+            $('#id_bank, #lampiran').prop('disabled', false);
             $('#primary_id').val('');
             $('#id_bank').val('').trigger('change');
             $('#info-pembayaran').hide();
@@ -336,6 +344,8 @@
                 data: formData,
                 contentType: false,
                 processData: false,
+                dataType: 'json',
+                headers: {Accept: 'application/json'},
                 success: function() {
                     $('#modalForm').modal('hide');
                     audio.play();
@@ -348,29 +358,22 @@
                     $('.data-table').DataTable().ajax.reload();
                 },
                 error: function(xhr) {
-                    if (xhr.status === 422) {
-                        audio.play();
-                        toastr.error("Ada inputan yang salah!", "GAGAL!", {
-                            progressBar: true,
-                            timeOut: 3500,
-                            positionClass: "toast-bottom-right",
-                        });
-
-                        let errors = xhr.responseJSON.errors;
-                        $.each(errors, function(key, val) {
-                            let input = $('#' + key);
-                            input.addClass('is-invalid');
-                            input.parent().find('.invalid-feedback').remove();
-                            input.parent().append(
-                                '<span class="invalid-feedback" role="alert"><strong>' +
-                                val[0] + '</strong></span>'
-                            );
-                        });
-
-                        spinner.addClass('d-none');
-                        btnText.text('Simpan');
-                        submitBtn.prop('disabled', false);
-                    }
+                    const response = xhr.responseJSON || {};
+                    const errors = response.errors || {};
+                    let message = Object.values(errors).flat().join(' ');
+                    if (!message) message = xhr.status === 403 ? 'Anda tidak memiliki izin Edit Piutang.' :
+                        (xhr.status === 422 ? response.message : 'Gagal menyimpan piutang. Muat ulang halaman lalu coba kembali.');
+                    toastr.error(message, 'GAGAL!');
+                    $.each(errors, function(key, values) {
+                        const input = $('#formData').find('[name="' + key + '"]');
+                        input.addClass('is-invalid');
+                        $('<div class="invalid-feedback d-block"></div>').text(values[0]).appendTo(input.parent());
+                    });
+                },
+                complete: function() {
+                    spinner.addClass('d-none');
+                    btnText.text('Simpan');
+                    submitBtn.prop('disabled', false);
                 }
             });
         });

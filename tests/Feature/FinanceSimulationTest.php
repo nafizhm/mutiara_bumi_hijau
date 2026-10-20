@@ -277,6 +277,28 @@ class FinanceSimulationTest extends TestCase
         $this->assertDatabaseHas('piutang', ['id_customer' => $id, 'terbayar' => 100000, 'sisa_bayar' => 900000]);
     }
 
+    public function test_sales_receivable_can_be_repriced_without_changing_payments(): void
+    {
+        $this->postJson('/admin/customer/customer', $this->customerInput(1, 'Booking'))->assertOk();
+        $bill = DB::table('piutang')->where('id_customer', 1)->first();
+        $url = route('piutang.update', $bill->id);
+        $count = DB::table('pemasukan')->count();
+        $this->getJson(route('piutang.edit', $bill->id))->assertOk();
+        $this->putJson($url, ['nominal' => '1.200.000', 'deskripsi' => 'Harga baru'])
+            ->assertOk();
+        $this->assertDatabaseHas('piutang', ['id' => $bill->id, 'nominal' => 1200000, 'terbayar' => 100000, 'sisa_bayar' => 1100000, 'status' => 1]);
+        $this->putJson($url, ['nominal' => 50000, 'deskripsi' => 'Terlalu kecil'])->assertUnprocessable()->assertJsonValidationErrors('nominal');
+        $this->assertDatabaseHas('piutang', ['id' => $bill->id, 'nominal' => 1200000, 'deskripsi' => 'Harga baru']);
+        $this->putJson($url, ['nominal' => 100000, 'deskripsi' => 'Penyesuaian lunas'])->assertOk();
+        $this->assertDatabaseHas('piutang', ['id' => $bill->id, 'terbayar' => 100000, 'sisa_bayar' => 0, 'status' => 2]);
+        $this->putJson($url, ['nominal' => 900000, 'deskripsi' => 'Penyesuaian lagi'])->assertOk();
+        $this->assertDatabaseHas('piutang', ['id' => $bill->id, 'sisa_bayar' => 800000, 'status' => 1, 'tgl_pelunasan' => null]);
+        $this->assertSame($count, DB::table('pemasukan')->count());
+        $this->assertSame(0, DB::table('pengeluaran')->where('id_piutang', $bill->id)->count());
+        DB::table('hak_akses')->update(['edit' => 0]);
+        $this->putJson($url, ['nominal' => 800000, 'deskripsi' => 'Tanpa izin'])->assertForbidden();
+    }
+
     public function test_wrong_customer_invoice_and_protected_origins_cannot_be_modified():void
     {
         foreach([1,2] as $lot)$this->postJson('/admin/customer/customer',$this->customerInput($lot,'Booking'))->assertOk();

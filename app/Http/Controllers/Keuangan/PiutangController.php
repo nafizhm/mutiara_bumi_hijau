@@ -69,7 +69,7 @@ class PiutangController extends Controller
                     if (! $row->id_customer && $row->sisa_bayar > 0 && $canPayPiutang) {
                         $buttons .= '<button type="button" class="btn btn-sm btn-primary piutang-pay-button" data-id="'.$row->id.'">Bayar</button>';
                     }
-                    if (! $row->id_customer && $permissions['edit']) {
+                    if ($permissions['edit']) {
                         $buttons .= '<button class="btn btn-sm btn-outline-secondary edit-button" data-url="'.e(route('piutang.edit', $row->id)).'">Edit</button>';
                     }
                     if (! $row->id_customer && ! $row->payments_count && ! $row->terbayar && $permissions['hapus']) {
@@ -87,7 +87,6 @@ class PiutangController extends Controller
     public function edit($id)
     {
         $list = Piutang::findOrFail($id);
-        abort_if((bool) $list->id_customer, 422, 'Piutang penjualan dikelola melalui menu Pembayaran.');
 
         return response()->json([
             'status' => 'success',
@@ -169,9 +168,31 @@ class PiutangController extends Controller
     public function update(Request $request,$id)
     {
         abort_unless(\App\Services\ReceivablePayment::canManage(auth()->id(),'piutang.index','edit'),403);
-        $input=$this->documentInput($request,false);
         $existing=Piutang::findOrFail($id);
-        abort_if((bool)$existing->id_customer,422,'Piutang penjualan dikelola melalui menu Pembayaran.');
+        if ($existing->id_customer) {
+            $value = (string) $request->nominal;
+            if (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $value)) {
+                $request->merge(['nominal' => str_replace('.', '', $value)]);
+            }
+            $input = $request->validate([
+                'nominal' => 'required|integer|min:1|max:2147483647',
+                'deskripsi' => 'required|string|max:1000',
+            ]);
+            return DB::transaction(function () use ($existing, $id, $input) {
+                $customer = \App\Models\Customer::lockForUpdate()->findOrFail($existing->id_customer);
+                abort_if((bool) $customer->stt_arsip, 422, 'Customer sudah diarsipkan.');
+                $receivable = Piutang::lockForUpdate()->findOrFail($id);
+                if ((int) $input['nominal'] < (int) $receivable->payments()->sum('nominal')) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'nominal' => 'Nominal piutang tidak boleh lebih kecil dari pembayaran yang sudah tercatat.',
+                    ]);
+                }
+                $receivable->update($input);
+                app(\App\Services\ReceivablePayment::class)->sync($receivable);
+                return response()->json(['status' => 'success', 'message' => 'Piutang berhasil diperbarui.']);
+            });
+        }
+        $input=$this->documentInput($request,false);
         return \App\Services\FinanceFiles::withUpload($request,'lampiran',['pengeluaran'],function($filename)use($input,$id){
             return DB::transaction(function()use($input,$id,$filename){
                 $receivable=Piutang::lockForUpdate()->findOrFail($id);
