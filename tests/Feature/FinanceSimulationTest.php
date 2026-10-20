@@ -214,6 +214,49 @@ class FinanceSimulationTest extends TestCase
         $this->assertBalanced(2100000);
     }
 
+    public function test_sales_payment_uses_edit_permission_consistently(): void
+    {
+        $this->postJson('/admin/customer/customer', $this->customerInput(1, 'Booking'))->assertOk();
+        $id = (int) DB::table('customer')->max('id');
+        $menuId = DB::table('menu')->where('route_name', 'pembayaran.index')->value('id');
+        $permission = DB::table('hak_akses')->where('id_user', 1)->where('id_menu', $menuId);
+        $permission->update(['tambah' => 0, 'edit' => 1]);
+        $payload = ['tanggal_pembayaran' => '2026-01-11', 'nominal_bayar' => 100000,
+            'id_bank' => 9, 'id_kategori_transaksi' => 28];
+        $this->postJson('/admin/pembayaran/tambah-pemasukan/'.$id, $payload)
+            ->assertOk()->assertJsonPath('success', true);
+        $permission->update(['tambah' => 1, 'edit' => 0]);
+        $count = DB::table('pemasukan')->count();
+        $this->postJson('/admin/pembayaran/tambah-pemasukan/'.$id, $payload)->assertForbidden();
+        $this->assertSame($count, DB::table('pemasukan')->count());
+    }
+
+    public function test_sales_payment_accepts_no_attachment_and_no_description(): void
+    {
+        $this->postJson('/admin/customer/customer', $this->customerInput(1, 'Booking'))->assertOk();
+        $id = (int) DB::table('customer')->max('id');
+        $this->postJson('/admin/pembayaran/tambah-pemasukan/'.$id, [
+            'tanggal_pembayaran' => '2026-01-11', 'nominal_bayar' => '100.000',
+            'id_bank' => 9, 'id_kategori_transaksi' => 28,
+        ])->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseHas('pemasukan', ['id_customer' => $id, 'nominal' => 100000, 'lampiran' => '']);
+        $this->assertDatabaseHas('piutang', ['id_customer' => $id, 'terbayar' => 200000, 'sisa_bayar' => 800000]);
+    }
+
+    public function test_sales_payment_rejects_oversized_attachment_without_recording_payment(): void
+    {
+        $this->postJson('/admin/customer/customer', $this->customerInput(1, 'Booking'))->assertOk();
+        $id = (int) DB::table('customer')->max('id');
+        $count = DB::table('pemasukan')->count();
+        $this->postJson('/admin/pembayaran/tambah-pemasukan/'.$id, [
+            'tanggal_pembayaran' => '2026-01-11', 'nominal_bayar' => 100000,
+            'id_bank' => 9, 'id_kategori_transaksi' => 28,
+            'file' => UploadedFile::fake()->create('bukti.pdf', 2049, 'application/pdf'),
+        ])->assertUnprocessable()->assertJsonPath('errors.file.0', 'File bukti pembayaran terlalu besar. Maksimal 2 MB.');
+        $this->assertSame($count, DB::table('pemasukan')->count());
+        $this->assertDatabaseHas('piutang', ['id_customer' => $id, 'terbayar' => 100000, 'sisa_bayar' => 900000]);
+    }
+
     public function test_wrong_customer_invoice_and_protected_origins_cannot_be_modified():void
     {
         foreach([1,2] as $lot)$this->postJson('/admin/customer/customer',$this->customerInput($lot,'Booking'))->assertOk();

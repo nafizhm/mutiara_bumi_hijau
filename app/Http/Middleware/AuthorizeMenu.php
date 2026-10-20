@@ -45,6 +45,9 @@ class AuthorizeMenu
         if ($controller === 'KavlingController' && $action === 'importExcel') {
             $ability = 'edit';
         }
+        if ($controller === 'PembayaranController' && $action === 'tambahPemasukan') {
+            $ability = 'edit';
+        }
         if ($controller === 'SiteplanPenjualanController' && $action === 'cetak') {
             $ability = 'lihat';
         }

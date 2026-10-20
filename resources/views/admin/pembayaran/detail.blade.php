@@ -173,6 +173,7 @@
                 </div>
                 <div class="modal-body">
                     <form id="formPemasukan">
+                    <div id="paymentError" class="alert alert-danger d-none mx-3" role="alert"></div>
                         @csrf
                         <input type="hidden" id="primary_id" name="primary_id" value="{{ $customer->id }}">
                         <div class="row mb-3">
@@ -278,6 +279,7 @@
                             <div class="col-sm-8">
                                 <input type="file" name="file" id="file"
                                     accept=".jpg, .jpeg, .png, .webp, .pdf">
+                                <div class="form-text">Opsional. JPG, JPEG, PNG, WEBP, atau PDF, maksimal 2 MB.</div>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -465,6 +467,13 @@
         $('#file').on('change', function() {
             const file = this.files[0];
             const previewDiv = $('#previewFoto');
+
+            if (file && file.size > 2 * 1024 * 1024) {
+                this.value = '';
+                previewDiv.html('<span style="color: #6c757d;">Tidak ada File</span>');
+                Swal.fire('File terlalu besar', 'File bukti pembayaran terlalu besar. Maksimal 2 MB. Pilih file yang lebih kecil atau simpan tanpa bukti pembayaran.', 'warning');
+                return;
+            }
 
             if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
@@ -832,6 +841,7 @@
             $('#formPemasukan')[0].reset();
             modal.find('.select-kategori-transaksi-pemasukan, .select-cara-bayar, .select-tagihan').val('').trigger('change');
             modal.find('#file').val('');
+            modal.find('#paymentError').addClass('d-none').empty();
             modal.find('.is-invalid').removeClass('is-invalid');
             modal.find('.invalid-feedback').remove();
             modal.find('#wrapper_tagihan').hide();
@@ -850,7 +860,14 @@
         $('#formPemasukan').on('submit', function(e) {
             e.preventDefault();
 
+            const selectedFile = this.querySelector('[name="file"]').files[0];
+            if (selectedFile && selectedFile.size > 2 * 1024 * 1024) {
+                Swal.fire('File terlalu besar', 'File bukti pembayaran terlalu besar. Maksimal 2 MB.', 'warning');
+                return;
+            }
+            const errorBox = $('#paymentError').addClass('d-none').empty();
             let submitBtn = $('#submitBtnPemasukan');
+            if (submitBtn.prop('disabled')) return;
             let spinner = submitBtn.find('.spinner-border');
             let btnText = submitBtn.find('.button-text');
 
@@ -875,6 +892,8 @@
                 data: formData,
                 contentType: false,
                 processData: false,
+                dataType: 'json',
+                headers: {Accept: 'application/json'},
                 success: function(response) {
                     if (response.success) {
                         $('#modalPemasukan').modal('hide');
@@ -894,32 +913,23 @@
                     }
                 },
                 error: function(xhr) {
-                    if (xhr.status === 422) {
-                        audio.play();
-                        toastr.error("Ada inputan yang salah!", "GAGAL!", {
-                            progressBar: true,
-                            timeOut: 3500,
-                            positionClass: "toast-bottom-right",
-                        });
-
-                        let errors = xhr.responseJSON.errors;
-                        $.each(errors, function(key, val) {
-                            let input = $('#' + key);
-                            input.addClass('is-invalid');
-                            input.parent().find('.invalid-feedback').remove();
-                            input.parent().append(
-                                '<span class="invalid-feedback" role="alert"><strong>' +
-                                val[0] + '</strong></span>'
-                            );
-                        });
-                    } else {
-                        audio.play();
-                        toastr.error("Gagal menambahkan data.", "GAGAL!", {
-                            progressBar: true,
-                            timeOut: 3500,
-                            positionClass: "toast-bottom-right"
-                        });
-                    }
+                    const response = xhr.responseJSON || {};
+                    const errors = response.errors || {};
+                    const messages = Object.values(errors).flat();
+                    let message = messages.length ? messages.join(' ') : 'Gagal menambahkan pembayaran. Silakan coba kembali.';
+                    if (xhr.status === 413) message = 'File bukti pembayaran terlalu besar. Maksimal 2 MB.';
+                    else if (xhr.status === 419) message = 'Sesi telah berakhir. Muat ulang halaman lalu coba kembali.';
+                    else if (xhr.status === 403) message = 'Anda tidak memiliki izin untuk menambahkan pembayaran.';
+                    else if (xhr.status === 422 && !messages.length) message = response.message || message;
+                    errorBox.text(message).removeClass('d-none');
+                    toastr.error(message, 'GAGAL!');
+                    const aliases = {nominal: 'nominal_bayar', tanggal: 'tanggal_pembayaran'};
+                    $.each(errors, function(key, values) {
+                        const name = aliases[key] || key;
+                        const input = $('#formPemasukan').find('[name="' + name + '"]');
+                        input.addClass('is-invalid');
+                        $('<div class="invalid-feedback d-block"></div>').text(values[0]).appendTo(input.parent());
+                    });
                 },
                 complete: function() {
                     spinner.addClass('d-none');

@@ -1,16 +1,8 @@
-@extends('admin.layout')
-@section('content')
-    <div class="page-content">
-        <section class="section">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex align-content-center justify-content-between">
-                        <h3 class="font-weight-bold text-xl">Edit Kavling</h3>
-                    </div>
-                </div>
-                <form id="formData">
+                <form id="formData" action="{{ route('kavling.update', $data->id) }}">
+                    <div class="modal-header"><h5 class="modal-title" id="editKavlingTitle">Edit Kavling</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
                     @csrf
-                    <div class="card-body">
+                    <div class="modal-body">
+                        <div id="editKavlingError" class="alert alert-danger d-none" role="alert"></div>
                         <input type="hidden" name="primary_id" id="primary_id" value="{{ $data->id }}">
                         <div class="row mb-3">
                             <label for="id_lokasi" class="col-sm-3 col-form-label">Lokasi / Cluster</label>
@@ -66,13 +58,17 @@
                             <label for="keterangan" class="col-sm-3 col-form-label">Keterangan</label>
                             <div class="col-sm-4">
                                 <input type="text" value="{{ $data->keterangan }}" name="keterangan" id="keterangan"
-                                    class="form-control">
+                                    class="form-control" maxlength="100">
                             </div>
                         </div>
-
-
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="ubah_semua" id="ubah_semua" value="1">
+                            <label class="form-check-label" for="ubah_semua">Ubah semua pada lokasi ini</label>
+                            <div class="form-text">Harga jual yang diisi akan diterapkan ke semua kavling pada lokasi ini.</div>
+                        </div>
                     </div>
-                    <div class="card-footer d-flex justify-content-end">
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                         <button type="submit" class="btn btn-primary" id="submitBtn">
                             <span class="spinner-border spinner-border-sm me-2 d-none" role="status"
                                 aria-hidden="true"></span>
@@ -80,69 +76,3 @@
                         </button>
                     </div>
                 </form>
-        </section>
-    </div>
-@endsection
-@push('scripts')
-    <script>
-        $('#formData').on('submit', function(e) {
-            e.preventDefault();
-
-            let submitBtn = $('#submitBtn');
-            let spinner = submitBtn.find('.spinner-border');
-            let btnText = submitBtn.find('.button-text');
-
-            spinner.removeClass('d-none');
-            btnText.text('Menyimpan...');
-            submitBtn.prop('disabled', true);
-
-            let id = $('#primary_id').val();
-            let url = '{{ route('kavling.update', ['kavling' => ':id']) }}'.replace(':id',
-                id);
-            let method = 'PUT';
-
-            $('.is-invalid').removeClass('is-invalid');
-            $('.invalid-feedback').remove();
-
-            let formData = new FormData(this);
-            formData.append('_method', method);
-
-            $.ajax({
-                url: url,
-                method: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function(res) {
-                    localStorage.setItem('kavlingSuccess', 'Data kavling berhasil diperbarui!');
-                    window.location.href = "{{ route('kavling.index') }}";
-                },
-                error: function(xhr) {
-                    if (xhr.status === 422) {
-                        audio.play();
-                        toastr.error("Ada inputan yang salah!", "GAGAL!", {
-                            progressBar: true,
-                            timeOut: 3500,
-                            positionClass: "toast-bottom-right",
-                        });
-
-                        let errors = xhr.responseJSON.errors;
-                        $.each(errors, function(key, val) {
-                            let input = $('#' + key);
-                            input.addClass('is-invalid');
-                            input.parent().find('.invalid-feedback').remove();
-                            input.parent().append(
-                                '<span class="invalid-feedback" role="alert"><strong>' +
-                                val[0] + '</strong></span>'
-                            );
-                        });
-                    }
-
-                    spinner.addClass('d-none');
-                    btnText.text('Simpan');
-                    submitBtn.prop('disabled', false);
-                }
-            });
-        });
-    </script>
-@endpush

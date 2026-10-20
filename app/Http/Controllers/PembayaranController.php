@@ -790,7 +790,17 @@ class PembayaranController extends Controller
             'id_bank'=>'required|integer|exists:bank,id', 'id_metode'=>'nullable|integer|exists:metode_bayar,id',
             'id_kategori_transaksi'=>'required|integer|in:25,26,27,28,102|exists:kategori_transaksi,id',
             'id_tagihan'=>'required_if:id_kategori_transaksi,102|nullable|integer|exists:piutang,id',
-            'keterangan_pembayaran'=>'required|string|max:1000', 'file'=>'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:2048',
+            'keterangan_pembayaran'=>'nullable|string|max:1000', 'file'=>'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:2048',
+        ], [
+            'file.max' => 'File bukti pembayaran terlalu besar. Maksimal 2 MB.',
+            'file.uploaded' => 'Bukti pembayaran gagal diupload. Pastikan ukuran file maksimal 2 MB.',
+            'file.mimes' => 'Bukti pembayaran harus berupa JPG, JPEG, PNG, WEBP, atau PDF.',
+            'tanggal_pembayaran.required' => 'Tanggal pembayaran wajib diisi.',
+            'id_bank.required' => 'Pilih rekening penerima.',
+            'id_kategori_transaksi.required' => 'Pilih kategori transaksi.',
+            'id_tagihan.required_if' => 'Pilih tagihan yang akan dibayar.',
+            'nominal_bayar.required' => 'Nominal pembayaran wajib diisi.',
+            'nominal_bayar.min' => 'Nominal pembayaran harus lebih dari nol.',
         ]);
         return \App\Services\FinanceFiles::withUpload($request,'file',['pemasukan'],function($filename) use($request,$id){
             app(\App\Services\ReceivablePayment::class)->paySales((int)$id,[

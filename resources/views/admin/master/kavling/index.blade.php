@@ -89,6 +89,9 @@
             </form>
         </div></div>
     </div>
+    <div class="modal fade" id="editKavlingModal" tabindex="-1" aria-labelledby="editKavlingTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg"><div class="modal-content" id="editKavlingContent"></div></div>
+    </div>
 @endsection
 @push('scripts')
     <script>
@@ -140,19 +143,6 @@
 
             if ($('body').hasClass('dark')) {
                 $('.select2-container').addClass('select2-dark');
-            }
-        });
-
-        $(document).ready(function() {
-            const successMsg = localStorage.getItem('kavlingSuccess');
-            if (successMsg) {
-                audio.play();
-                toastr.success(successMsg, "BERHASIL", {
-                    progressBar: true,
-                    timeOut: 3500,
-                    positionClass: "toast-bottom-right",
-                });
-                localStorage.removeItem('kavlingSuccess');
             }
         });
 
@@ -233,6 +223,70 @@
                     }
                 }]
             });
+
+            const editModalElement = document.getElementById('editKavlingModal');
+            const editModal = bootstrap.Modal.getOrCreateInstance(editModalElement);
+            function openKavling(url) {
+                $('#editKavlingContent').html('<div class="modal-body">Memuat data...</div>');
+                editModal.show();
+                $.ajax({url: url, headers: {Accept: 'text/html'}})
+                    .done(function(html) { $('#editKavlingContent').html(html); })
+                    .fail(function() {
+                        editModal.hide();
+                        Swal.fire('Gagal', 'Data kavling tidak dapat dimuat. Silakan muat ulang halaman.', 'error');
+                    });
+            }
+            $(document).on('click', '.data-table a.edit', function(event) {
+                event.preventDefault();
+                openKavling(this.href);
+            });
+            $(document).on('submit', '#formData', function(event) {
+                event.preventDefault();
+                const form = $(this);
+                const button = form.find('[type="submit"]');
+                if (button.prop('disabled')) return;
+                button.prop('disabled', true);
+                button.find('.spinner-border').removeClass('d-none');
+                button.find('.button-text').text('Menyimpan...');
+                form.find('.is-invalid').removeClass('is-invalid');
+                form.find('.invalid-feedback').remove();
+                const errorBox = form.find('#editKavlingError').addClass('d-none').empty();
+                const payload = new FormData(this);
+                payload.append('_method', 'PUT');
+                $.ajax({
+                    url: this.action, method: 'POST', data: payload,
+                    contentType: false, processData: false, dataType: 'json',
+                    headers: {Accept: 'application/json'},
+                    success: function(response) {
+                        if (!response.success) {
+                            errorBox.text(response.message || 'Data gagal disimpan.').removeClass('d-none');
+                            return;
+                        }
+                        editModal.hide();
+                        table.ajax.reload(null, false);
+                        Swal.fire('Berhasil', response.message, 'success');
+                    },
+                    error: function(xhr) {
+                        const response = xhr.responseJSON || {};
+                        errorBox.text(xhr.status === 422 ? 'Periksa kembali isian berikut.' :
+                            (response.message || 'Data gagal disimpan. Silakan muat ulang halaman dan coba kembali.')).removeClass('d-none');
+                        $.each(response.errors || {}, function(name, messages) {
+                            const input = form.find('[name="' + name + '"]');
+                            input.addClass('is-invalid');
+                            $('<div class="invalid-feedback"></div>').text(messages[0]).insertAfter(input);
+                        });
+                    },
+                    complete: function() {
+                        button.prop('disabled', false);
+                        button.find('.spinner-border').addClass('d-none');
+                        button.find('.button-text').text('Simpan');
+                    }
+                });
+            });
+            const initialEdit = @json(request('edit'));
+            if (initialEdit && /^\d+$/.test(initialEdit)) {
+                openKavling(@json(route('kavling.edit', ['kavling' => '__id__'])).replace('__id__', initialEdit));
+            }
 
             $('#id_lokasi').on('change', function() {
                 table.ajax.reload();

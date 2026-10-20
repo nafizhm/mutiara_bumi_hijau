@@ -72,10 +72,13 @@ class KavlingController extends Controller
         return view('admin.master.kavling.index', compact('permissions', 'lokasiList'));
     }
 
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         $data = KavlingPeta::with('lokasi')->findOrFail($id);
-        return view('admin.master.kavling.edit', compact('data'));
+        if ($request->ajax()) {
+            return view('admin.master.kavling.edit', compact('data'));
+        }
+        return redirect()->route('kavling.index', ['edit' => $id]);
     }
 
     public function update(Request $request, $id)
@@ -88,7 +91,8 @@ class KavlingController extends Controller
             'panjang'  => 'required|numeric',
             'lebar'    => 'required|numeric',
             'luas_tanah'     => 'required|numeric',
-            'hrg_jual'       => 'required|string',
+            'hrg_jual'       => 'required|integer|min:0|max:2147483647',
+            'ubah_semua'     => 'sometimes|boolean',
             'keterangan'     => 'nullable|string|max:100',
         ], [
             'panjang.required'  => 'Panjang wajib diisi.',
@@ -104,7 +108,9 @@ class KavlingController extends Controller
 
 
             'hrg_jual.required'       => 'Harga jual wajib diisi.',
-            'hrg_jual.string'         => 'Harga jual harus berupa teks.',
+            'hrg_jual.integer'        => 'Harga jual harus berupa angka rupiah bulat.',
+            'hrg_jual.min'            => 'Harga jual tidak boleh negatif.',
+            'hrg_jual.max'            => 'Harga jual maksimal Rp2.147.483.647.',
 
             'keterangan.string'       => 'Keterangan harus berupa teks.',
             'keterangan.max'          => 'Keterangan maksimal 100 karakter.',
@@ -121,23 +127,30 @@ class KavlingController extends Controller
         }
 
         try {
-            $data->update([
-                'panjang'      => $request->panjang,
-                'lebar'        => $request->lebar,
-                'luas_tanah'         => $request->luas_tanah,
-                'hrg_jual'           => $request->hrg_jual,
-                'keterangan'         => $request->keterangan ?? '',
-                'id_rumah_sikumbang' => '',
-            ]);
+            DB::transaction(function () use ($data, $request) {
+                $data->update([
+                    'panjang' => $request->panjang,
+                    'lebar' => $request->lebar,
+                    'luas_tanah' => $request->luas_tanah,
+                    'hrg_jual' => $request->hrg_jual,
+                    'keterangan' => $request->keterangan ?? '',
+                ]);
+                if ($request->boolean('ubah_semua')) {
+                    abort_if(!$data->id_lokasi, 422, 'Lokasi kavling belum ditentukan.');
+                    KavlingPeta::where('id_lokasi', $data->id_lokasi)
+                        ->update(['hrg_jual' => $request->hrg_jual]);
+                }
+            });
 
             return response()->json([
                 'success' => true,
                 'message' => 'Data berhasil disimpan',
             ], 200);
         } catch (\Exception $e) {
+            report($e);
             return response()->json([
-                'success' => true,
-                'message' => 'Data berhasil disimpan',
+                'success' => false,
+                'message' => 'Data gagal disimpan. Silakan coba kembali.',
             ], 500);
         }
     }
