@@ -299,6 +299,67 @@ class FinanceSimulationTest extends TestCase
         $this->putJson($url, ['nominal' => 800000, 'deskripsi' => 'Tanpa izin'])->assertForbidden();
     }
 
+    public function test_customer_cancel_removes_all_its_receivables_and_preserves_cash_history(): void
+    {
+        Schema::table('customer', function (Blueprint $table) {
+            $table->date('tgl_cancel')->nullable();
+            $table->string('alasan_cancel')->nullable();
+        });
+        foreach ([1, 2] as $lot) {
+            $this->postJson('/admin/customer/customer', $this->customerInput($lot, 'Booking'))->assertOk();
+        }
+        $mainId = DB::table('piutang')->where('id_customer', 1)->value('id');
+        $this->postJson(route('piutang.additional', $mainId), [
+            'tanggal_piutang' => '2026-01-15', 'nominal' => 250000,
+            'deskripsi' => 'Biaya tambahan', 'id_kategori_transaksi' => 102,
+        ])->assertCreated();
+        $incomeCount = DB::table('pemasukan')->count();
+        $incomeTotal = DB::table('pemasukan')->sum('nominal');
+        $this->deleteJson(route('customer.destroy', 1), [])->assertUnprocessable();
+        $this->assertSame(2, DB::table('piutang')->where('id_customer', 1)->count());
+        $this->deleteJson(route('customer.destroy', 1), [
+            'tgl_cancel' => '2026-01-20', 'alasan_cancel' => 'Batal pembelian',
+        ])->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseHas('customer', ['id' => 1, 'stt_arsip' => 1]);
+        $this->assertSame(0, DB::table('piutang')->where('id_customer', 1)->count());
+        $this->assertSame(1, DB::table('piutang')->where('id_customer', 2)->count());
+        $this->assertDatabaseHas('pemasukan', ['id_customer' => 1, 'id_piutang' => null, 'nominal' => 100000]);
+        $this->assertSame($incomeCount, DB::table('pemasukan')->count());
+        $this->assertEquals($incomeTotal, DB::table('pemasukan')->sum('nominal'));
+    }
+
+    public function test_kavling_price_edit_updates_active_sale_receivable_and_rolls_back_below_paid(): void
+    {
+        Schema::table('kavling_peta', function (Blueprint $table) {
+            $table->integer('panjang')->default(0);
+            $table->integer('lebar')->default(0);
+            $table->integer('luas_tanah')->default(0);
+            $table->string('keterangan')->default('');
+        });
+        $input = $this->customerInput(1, 'Booking');
+        $input['id_kavling'] = [1, 2];
+        $input['discount'] = 100000;
+        $this->postJson('/admin/customer/customer', $input)->assertOk();
+        $bill = DB::table('piutang')->where('id_customer', 1)->first();
+        $menu = DB::table('menu')->insertGetId(['route_name' => 'kavling.index']);
+        DB::table('hak_akses')->insert(['id_user' => 1, 'id_menu' => $menu]);
+        $payload = ['panjang' => 12, 'lebar' => 6, 'luas_tanah' => 72, 'hrg_jual' => '1.200.000'];
+        $url = route('kavling.update', 1);
+        $this->putJson($url, $payload)->assertOk();
+        $this->assertDatabaseHas('piutang', ['id' => $bill->id, 'nominal' => 2100000, 'terbayar' => 100000, 'sisa_bayar' => 2000000]);
+        $this->assertDatabaseHas('transaksi_kavling', ['id_customer' => 1, 'id_kavling' => 1, 'hrg_rumah' => 1200000]);
+        $this->assertDatabaseHas('transaksi_kavling', ['id_customer' => 1, 'id_kavling' => 2, 'hrg_rumah' => 1000000]);
+        $this->postJson('/admin/pembayaran/tambah-pemasukan/1', [
+            'tanggal_pembayaran' => '2026-01-11', 'nominal_bayar' => 1500000,
+            'id_bank' => 9, 'id_kategori_transaksi' => 28,
+        ])->assertOk();
+        $payload['hrg_jual'] = '100.000';
+        $this->putJson($url, $payload)->assertUnprocessable()->assertJsonValidationErrors('hrg_jual');
+        $this->assertDatabaseHas('kavling_peta', ['id' => 1, 'hrg_jual' => 1200000]);
+        $this->assertDatabaseHas('transaksi_kavling', ['id_customer' => 1, 'id_kavling' => 1, 'hrg_rumah' => 1200000]);
+        $this->assertDatabaseHas('piutang', ['id' => $bill->id, 'nominal' => 2100000, 'terbayar' => 1600000]);
+    }
+
     public function test_wrong_customer_invoice_and_protected_origins_cannot_be_modified():void
     {
         foreach([1,2] as $lot)$this->postJson('/admin/customer/customer',$this->customerInput($lot,'Booking'))->assertOk();

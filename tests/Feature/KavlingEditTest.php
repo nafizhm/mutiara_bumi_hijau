@@ -23,6 +23,12 @@ class KavlingEditTest extends TestCase
             $table->string('keterangan')->default('Lama');
             $table->string('id_rumah_sikumbang')->default('SIP-1');
         });
+        Schema::create('customer', function (Blueprint $table) {
+            $table->id(); $table->integer('stt_arsip')->default(0);
+        });
+        Schema::create('transaksi_kavling', function (Blueprint $table) {
+            $table->id(); $table->integer('id_customer'); $table->integer('id_kavling');
+        });
         DB::table('kavling_peta')->insert([
             ['id' => 1, 'id_lokasi' => 1], ['id' => 2, 'id_lokasi' => 1], ['id' => 3, 'id_lokasi' => 2],
         ]);
@@ -43,10 +49,10 @@ class KavlingEditTest extends TestCase
         $this->assertDatabaseHas('kavling_peta', ['id' => 2, 'hrg_jual' => 10]);
     }
 
-    public function test_bulk_edit_changes_only_prices_in_the_same_location(): void
+    public function test_legacy_bulk_flag_does_not_change_other_plots(): void
     {
         $this->assertTrue($this->save(['ubah_semua' => '1'])->getData()->success);
-        $this->assertDatabaseHas('kavling_peta', ['id' => 2, 'hrg_jual' => 150000000, 'panjang' => 10, 'keterangan' => 'Lama']);
+        $this->assertDatabaseHas('kavling_peta', ['id' => 2, 'hrg_jual' => 10, 'panjang' => 10, 'keterangan' => 'Lama']);
         $this->assertDatabaseHas('kavling_peta', ['id' => 3, 'hrg_jual' => 10]);
     }
 

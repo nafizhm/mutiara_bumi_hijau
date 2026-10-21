@@ -92,7 +92,6 @@ class KavlingController extends Controller
             'lebar'    => 'required|numeric',
             'luas_tanah'     => 'required|numeric',
             'hrg_jual'       => 'required|integer|min:0|max:2147483647',
-            'ubah_semua'     => 'sometimes|boolean',
             'keterangan'     => 'nullable|string|max:100',
         ], [
             'panjang.required'  => 'Panjang wajib diisi.',
@@ -128,6 +127,11 @@ class KavlingController extends Controller
 
         try {
             DB::transaction(function () use ($data, $request) {
+                $customers = \App\Models\Customer::where('stt_arsip', 0)
+                    ->whereHas('transaksiKavling', fn ($query) => $query->where('id_kavling', $data->id))
+                    ->orderBy('id')->lockForUpdate()->get();
+                $data = KavlingPeta::lockForUpdate()->findOrFail($data->id);
+                $priceChanged = (int) $data->hrg_jual !== (int) $request->hrg_jual;
                 $data->update([
                     'panjang' => $request->panjang,
                     'lebar' => $request->lebar,
@@ -135,10 +139,32 @@ class KavlingController extends Controller
                     'hrg_jual' => $request->hrg_jual,
                     'keterangan' => $request->keterangan ?? '',
                 ]);
-                if ($request->boolean('ubah_semua')) {
-                    abort_if(!$data->id_lokasi, 422, 'Lokasi kavling belum ditentukan.');
-                    KavlingPeta::where('id_lokasi', $data->id_lokasi)
-                        ->update(['hrg_jual' => $request->hrg_jual]);
+                if ($priceChanged) {
+                    foreach ($customers as $customer) {
+                        $links = $customer->transaksiKavling()->orderBy('id')->lockForUpdate()->get();
+                        foreach ($links as $link) {
+                            if ((int) $link->id_kavling === (int) $data->id) {
+                                $link->update(['hrg_rumah' => $request->hrg_jual]);
+                            }
+                        }
+                        $price = (int) $links->sum('hrg_rumah') - (int) $customer->discount;
+                        $bills = \App\Models\Piutang::where('id_customer', $customer->id)
+                            ->where(fn ($query) => $query->whereNull('id_kategori_transaksi')->orWhere('id_kategori_transaksi', 0))
+                            ->lockForUpdate()->get();
+                        if ($bills->count() !== 1 || $price <= 0 || $price > 2147483647) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'hrg_jual' => 'Harga tidak dapat disesuaikan: periksa piutang utama dan diskon pelanggan terkait.',
+                            ]);
+                        }
+                        $bill = $bills->first();
+                        if ($price < (int) $bill->payments()->sum('nominal')) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'hrg_jual' => 'Harga baru setelah diskon tidak boleh lebih kecil dari pembayaran yang sudah masuk.',
+                            ]);
+                        }
+                        $bill->update(['nominal' => $price]);
+                        app(\App\Services\ReceivablePayment::class)->sync($bill);
+                    }
                 }
             });
 
@@ -146,6 +172,8 @@ class KavlingController extends Controller
                 'success' => true,
                 'message' => 'Data berhasil disimpan',
             ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return response()->json([

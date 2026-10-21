@@ -61,11 +61,7 @@
                                     class="form-control" maxlength="100">
                             </div>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="ubah_semua" id="ubah_semua" value="1">
-                            <label class="form-check-label" for="ubah_semua">Ubah semua pada lokasi ini</label>
-                            <div class="form-text">Harga jual yang diisi akan diterapkan ke semua kavling pada lokasi ini.</div>
-                        </div>
+                        <p class="small text-muted">Perubahan harga otomatis menyesuaikan piutang utama pelanggan aktif yang membeli kavling ini, dengan memperhitungkan diskon dan pembayaran yang sudah masuk.</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

@@ -912,19 +912,24 @@ class CustomerController extends Controller
 
     public function destroy($id)
     {
+        $request = request();
+        $request->validate([
+            'tgl_cancel'    => 'required|date',
+            'alasan_cancel' => 'required',
+        ], [
+            'tgl_cancel.required'    => 'Tanggal cancel wajib diisi!',
+            'tgl_cancel.date'        => 'Format tanggal tidak valid!',
+            'alasan_cancel.required' => 'Alasan cancel wajib diisi!',
+        ]);
+
         DB::beginTransaction();
         try {
-            $request = request();
-            $request->validate([
-                'tgl_cancel'    => 'required|date',
-                'alasan_cancel' => 'required',
-            ], [
-                'tgl_cancel.required'    => 'Tanggal cancel wajib diisi!',
-                'tgl_cancel.date'        => 'Format tanggal tidak valid!',
-                'alasan_cancel.required' => 'Alasan cancel wajib diisi!',
-            ]);
-
-            $data = Customer::findOrFail($id);
+            $data = Customer::lockForUpdate()->findOrFail($id);
+            $receivableIds = Piutang::where('id_customer', $data->id)->lockForUpdate()->pluck('id');
+            // Keep the cash history while removing references to cancelled receivables.
+            Pemasukan::whereIn('id_piutang', $receivableIds)->update(['id_piutang' => null]);
+            DB::table('pengeluaran')->whereIn('id_piutang', $receivableIds)->update(['id_piutang' => null]);
+            Piutang::whereIn('id', $receivableIds)->delete();
             $data->update([
                 'stt_arsip'     => 1,
                 'tgl_cancel'    => $request->tgl_cancel,
@@ -935,7 +940,7 @@ class CustomerController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data berhasil di cancel.',
+                'message' => 'Pelanggan berhasil dicancel dan seluruh piutangnya dihapus.',
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
