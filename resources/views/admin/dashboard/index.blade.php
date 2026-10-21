@@ -1,6 +1,6 @@
 @extends('admin.layout')
 @section('content')
-    @if(auth()->user()->isSuperAdmin())
+    @if(auth()->user()->canApproveChanges())
         @php
             $pendingApprovals = \App\Models\ChangeRequest::where('status', 'pending')->count();
         @endphp

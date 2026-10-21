@@ -43,7 +43,7 @@ class QueueChanges
                 'input' => $request->except(['_token', '_method', 'approval_reason']),
                 'files' => array_map($encode, $request->allFiles())],
         ]);
-        $message = 'Pengajuan #'.$change->id.' menunggu persetujuan Super Admin. Data belum berubah.';
+        $message = 'Pengajuan #'.$change->id.' menunggu persetujuan Super Admin atau Direktur. Data belum berubah.';
         if ($request->expectsJson()) return response()->json(['success' => true, 'pending_approval' => true, 'message' => $message], 202);
         return redirect()->back()->with('success', $message);
     }

@@ -19,20 +19,20 @@ class ChangeRequestController extends Controller
 
     public function index(Request $request)
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->canApproveChanges(), 403);
         $changes = ChangeRequest::with('requester')->orderByRaw("case when status = 'pending' then 0 else 1 end")->latest()->paginate(25);
         return view('admin.approvals.index', compact('changes'));
     }
 
     public function show(Request $request, ChangeRequest $change)
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->canApproveChanges(), 403);
         return view('admin.approvals.show', compact('change'));
     }
 
     public function review(Request $request, ChangeRequest $change)
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->canApproveChanges(), 403);
         $request->validate(['decision' => 'required|in:approved,rejected', 'review_note' => 'nullable|string|max:2000']);
         DB::transaction(function () use ($request, $change) {
             $change = ChangeRequest::whereKey($change->id)->lockForUpdate()->firstOrFail();

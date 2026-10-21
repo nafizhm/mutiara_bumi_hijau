@@ -60,5 +60,11 @@ class User extends Authenticatable
         return $this->role?->role === 'Super Admin';
     }
 
+    public function canApproveChanges(): bool
+    {
+        $role = strtolower(trim((string) $this->role?->role));
+        return in_array($role, ['super admin', 'superadmin', 'direktur', 'derektur'], true);
+    }
+
     public $timestamps = false;
 }

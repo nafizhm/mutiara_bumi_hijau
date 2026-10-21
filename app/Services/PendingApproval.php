@@ -26,7 +26,7 @@ class PendingApproval
     {
         $routes = Route::getRoutes();
         return ChangeRequest::where('status', 'pending')->get()->map(function ($change) use ($routes) {
-            if (!auth()->user()?->isSuperAdmin() && !ReceivablePayment::canManage(auth()->id(), $change->menu, 'lihat')) return null;
+            if (!auth()->user()?->canApproveChanges() && !ReceivablePayment::canManage(auth()->id(), $change->menu, 'lihat')) return null;
             $source = $routes->getByName($change->route_name);
             if (!$source) return null;
             $payload = $change->payload;

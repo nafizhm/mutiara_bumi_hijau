@@ -40,6 +40,23 @@ class ChangeApprovalTest extends TestCase
             ->assertStatus(202)->assertJsonPath('pending_approval', true);
     }
 
+    public function test_director_can_access_and_approve_requests(): void
+    {
+        $this->submitEdit();
+        DB::table('role')->insert(['id' => 5, 'role' => 'Direktur']);
+        DB::table('users')->insert(['id' => 3, 'username' => 'direktur', 'id_role' => 5]);
+        $this->actingAs(User::find(3));
+        $request = \Illuminate\Http\Request::create('/');
+        $request->setUserResolver(fn () => User::find(3));
+        $controller = app(\App\Http\Controllers\ChangeRequestController::class);
+        $this->assertSame('admin.approvals.index', $controller->index($request)->name());
+        $this->assertSame('admin.approvals.show', $controller->show($request, ChangeRequest::find(1))->name());
+        $this->getJson(route('approvals.statuses'))->assertJsonCount(1, 'data');
+        $this->post(route('approvals.review', 1), ['decision' => 'approved'])->assertRedirect();
+        $this->assertDatabaseHas('bank', ['nama' => 'Baru']);
+        $this->assertDatabaseHas('change_requests', ['status' => 'approved', 'reviewer_id' => 3]);
+    }
+
     public function test_edit_waits_for_approval_and_can_only_be_applied_once(): void
     {
         $this->submitEdit();

@@ -21,7 +21,7 @@
         });
     }
     function reason() {
-        let value = window.prompt('Alasan edit/hapus (minimal 5 karakter). Perubahan akan menunggu persetujuan Super Admin.');
+        let value = window.prompt('Alasan edit/hapus (minimal 5 karakter). Perubahan akan menunggu persetujuan Super Admin atau Direktur.');
         if (value === null) return null;
         value = value.trim();
         if (value.length < 5 || value.length > 2000) { window.alert('Alasan wajib 5–2000 karakter.'); return null; }
