@@ -346,10 +346,10 @@
                 processData: false,
                 dataType: 'json',
                 headers: {Accept: 'application/json'},
-                success: function() {
+                success: function(response) {
                     $('#modalForm').modal('hide');
                     audio.play();
-                    let msg = id ? "Piutang berhasil diupdate!" : "Piutang berhasil ditambahkan!";
+                    let msg = response.message || (id ? "Piutang berhasil diupdate!" : "Piutang berhasil ditambahkan!");
                     toastr.success(msg, "BERHASIL", {
                         progressBar: true,
                         timeOut: 3500,

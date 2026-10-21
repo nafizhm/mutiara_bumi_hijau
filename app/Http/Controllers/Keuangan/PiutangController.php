@@ -31,15 +31,19 @@ class PiutangController extends Controller
         $permissions = HakAksesController::getUserPermissions();
         $canPayPiutang = \App\Services\ReceivablePayment::canPay($request->user()?->id);
         if ($request->ajax()) {
-            $data = Piutang::with('customer:id,nama_lengkap')->withCount('payments')->orderByDesc('id');
+            $packages = DB::table('piutang')->selectRaw('MIN(id) AS representative_id, SUM(nominal) AS package_nominal, SUM(terbayar) AS package_paid, SUM(sisa_bayar) AS package_remaining, COUNT(*) AS component_count')
+                ->groupByRaw('CASE WHEN id_customer > 0 THEN id_customer ELSE -id END');
+            $data = Piutang::query()->joinSub($packages, 'packages', fn ($join) => $join->on('piutang.id', '=', 'packages.representative_id'))
+                ->select('piutang.*', 'packages.component_count', 'packages.package_nominal', 'packages.package_paid', 'packages.package_remaining')
+                ->with('customer:id,nama_lengkap')->withCount('payments')->orderByDesc('piutang.id');
             if ($request->filled('tanggal')) {
                 $data->whereDate('tanggal_piutang', $request->tanggal);
             }
             if ($request->input('status') === 'lunas') {
-                $data->where('sisa_bayar', '<=', 0);
+                $data->where('packages.package_remaining', '<=', 0);
             }
             if ($request->input('status') === 'belum') {
-                $data->where('sisa_bayar', '>', 0);
+                $data->where('packages.package_remaining', '>', 0);
             }
             if ($request->input('sumber') === 'lainnya') {
                 $data->nonSales();
@@ -55,15 +59,18 @@ class PiutangController extends Controller
                     $type = $row->id_customer ? 'Penjualan kavling' : 'Piutang lainnya';
 
                     return '<div class="fw-semibold">'.e($name ?: $row->deskripsi).'</div>'
-                        .($name ? '<div class="small text-muted">'.e($row->deskripsi).'</div>' : '')
+                        .($name ? '<div class="small text-muted">Paket penjualan · '.(int) $row->component_count.' komponen</div>' : '')
                         .'<span class="badge bg-light text-dark mt-1">'.$type.'</span>';
                 })
                 ->filterColumn('informasi', fn ($q, $keyword) => $q->where(fn ($q) => $q->where('deskripsi', 'like', "%{$keyword}%")
-                    ->orWhereHas('customer', fn ($q) => $q->where('nama_lengkap', 'like', "%{$keyword}%"))))
-                ->editColumn('nominal', fn ($row) => 'Rp '.number_format($row->nominal, 0, ',', '.'))
-                ->editColumn('terbayar', fn ($row) => 'Rp '.number_format($row->terbayar, 0, ',', '.'))
-                ->editColumn('sisa_bayar', fn ($row) => 'Rp '.number_format(max(0, $row->sisa_bayar), 0, ',', '.'))
-                ->editColumn('status', fn ($row) => $row->sisa_bayar <= 0 ? '<span class="badge bg-success">Lunas</span>' : '<span class="badge bg-warning text-dark">Belum lunas</span>')
+                    ->orWhereHas('customer', fn ($q) => $q->where('nama_lengkap', 'like', "%{$keyword}%"))
+                    ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('piutang as component')
+                        ->whereColumn('component.id_customer', 'piutang.id_customer')->where('component.id_customer', '>', 0)
+                        ->where('component.deskripsi', 'like', "%{$keyword}%"))))
+                ->editColumn('nominal', fn ($row) => 'Rp '.number_format($row->package_nominal, 0, ',', '.'))
+                ->editColumn('terbayar', fn ($row) => 'Rp '.number_format($row->package_paid, 0, ',', '.'))
+                ->editColumn('sisa_bayar', fn ($row) => 'Rp '.number_format(max(0, $row->package_remaining), 0, ',', '.'))
+                ->editColumn('status', fn ($row) => $row->package_remaining <= 0 ? '<span class="badge bg-success">Lunas</span>' : '<span class="badge bg-warning text-dark">Belum lunas</span>')
                 ->addColumn('action', function ($row) use ($permissions, $canPayPiutang) {
                     $buttons = '<div class="d-flex flex-wrap justify-content-center gap-1"><button type="button" class="btn btn-sm btn-outline-primary piutang-history-button" data-id="'.$row->id.'">Detail</button>';
                     if (! $row->id_customer && $row->sisa_bayar > 0 && $canPayPiutang) {
@@ -71,6 +78,9 @@ class PiutangController extends Controller
                     }
                     if ($permissions['edit']) {
                         $buttons .= '<button class="btn btn-sm btn-outline-secondary edit-button" data-url="'.e(route('piutang.edit', $row->id)).'">Edit</button>';
+                    }
+                    if ($row->id_customer && $permissions['tambah']) {
+                        $buttons .= '<button type="button" class="btn btn-sm btn-outline-success piutang-add-component-button" data-id="'.$row->id.'">Tambah Komponen</button>';
                     }
                     if (! $row->id_customer && ! $row->payments_count && ! $row->terbayar && $permissions['hapus']) {
                         $buttons .= '<form action="'.e(route('piutang.destroy', $row->id)).'" method="POST">'.csrf_field().method_field('DELETE').'<button type="submit" class="btn btn-sm btn-outline-danger delete-button">Hapus</button></form>';
@@ -97,9 +107,20 @@ class PiutangController extends Controller
     public function show($id)
     {
         $list = Piutang::with(['customer:id,nama_lengkap', 'payments' => fn ($q) => $q->with('bank:id,nama')->orderBy('tanggal')->orderBy('id')])->findOrFail($id);
+        $components = $list->id_customer ? Piutang::where('id_customer', $list->id_customer)
+            ->orderBy('tanggal_piutang')->orderBy('id')
+            ->get(['id', 'deskripsi', 'nominal', 'terbayar', 'sisa_bayar']) : collect();
+        if ($list->id_customer) {
+            foreach (['nominal', 'terbayar', 'sisa_bayar'] as $field) {
+                $list->{$field} = $components->sum($field);
+            }
+            $list->setRelation('payments', Pemasukan::with('bank:id,nama')->whereIn('id_piutang', $components->pluck('id'))
+                ->orderBy('tanggal')->orderBy('id')->get());
+        }
 
         return response()->json([
             'status' => 'success', 'data' => $list,
+            'purchase_components' => $components,
             'additional_categories' => \App\Models\KategoriTransaksi::where('jenis_kategori', 'PEMASUKAN')->whereNotIn('kategori', \App\Services\FinanceCategories::SYSTEM)->where('id', '>', 36)->get(['id', 'kategori']),
             'can_additional' => (bool) $list->id_customer && \App\Services\ReceivablePayment::canManage(auth()->id(), 'piutang.index', 'tambah'),
             'can_pay' => ! $list->id_customer && $list->sisa_bayar > 0 && \App\Services\ReceivablePayment::canPay(auth()->id()),
@@ -130,7 +151,7 @@ class PiutangController extends Controller
                 'terbayar' => 0, 'sisa_bayar' => $request->nominal, 'status' => 1,
             ]);
         });
-        return response()->json(['status' => 'success', 'data' => $bill], 201);
+        return response()->json(['status' => 'success', 'message' => 'Komponen pembelian berhasil ditambahkan.', 'data' => $bill], 201);
     }
 
     public function pay(Request $request, $id)

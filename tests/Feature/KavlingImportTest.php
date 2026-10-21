@@ -16,6 +16,7 @@ class KavlingImportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\QueueChanges::class);
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         DB::purge('sqlite');
         Schema::create('users', function (Blueprint $table) { $table->id(); $table->string('username'); });

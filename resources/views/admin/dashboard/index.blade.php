@@ -1,5 +1,13 @@
 @extends('admin.layout')
 @section('content')
+    @if(auth()->user()->isSuperAdmin())
+        @php
+            $pendingApprovals = \App\Models\ChangeRequest::where('status', 'pending')->count();
+        @endphp
+        <a class="alert alert-warning d-block" href="{{ route('approvals.index') }}">
+            <i class="bi bi-bell-fill"></i> {{ $pendingApprovals }} pengajuan edit/hapus menunggu persetujuan. Klik untuk melihat detail.
+        </a>
+    @endif
     @php
         $logo = \App\Models\KonfigurasiMedia::where('jenis_data', 'logo website')->first();
     @endphp

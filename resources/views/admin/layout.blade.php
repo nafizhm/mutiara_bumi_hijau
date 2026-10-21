@@ -879,6 +879,7 @@
 
     <script src="{{ asset('js/select2_multiple.js') }}"></script>
 
+    @include('admin.approvals.reason-script')
     @stack('scripts')
 
 </body>

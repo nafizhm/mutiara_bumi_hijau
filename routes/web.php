@@ -52,7 +52,11 @@ Route::group(['middleware' => 'guest'], function () {
     Route::post('admin/post-login', [AuthController::class, 'postLogin'])->middleware('throttle:5,1')->name('admin.loginPost');
 });
 
-Route::middleware(['auth', \App\Http\Middleware\AuthorizeMenu::class])->prefix('admin')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\AuthorizeMenu::class, \App\Http\Middleware\QueueChanges::class])->prefix('admin')->group(function () {
+    Route::get('persetujuan', [\App\Http\Controllers\ChangeRequestController::class, 'index'])->name('approvals.index');
+    Route::get('status-persetujuan', [\App\Http\Controllers\ChangeRequestController::class, 'statuses'])->name('approvals.statuses');
+    Route::get('persetujuan/{change}', [\App\Http\Controllers\ChangeRequestController::class, 'show'])->name('approvals.show');
+    Route::post('persetujuan/{change}/review', [\App\Http\Controllers\ChangeRequestController::class, 'review'])->name('approvals.review');
     Route::get('log-aktivitas', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/beranda', fn() => redirect()->route('dashboard'))->name('beranda');
 

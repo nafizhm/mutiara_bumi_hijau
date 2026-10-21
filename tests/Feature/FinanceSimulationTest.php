@@ -20,6 +20,8 @@ class FinanceSimulationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Exercise ledger rules directly; approval workflow has dedicated HTTP tests.
+        $this->withoutMiddleware(\App\Http\Middleware\QueueChanges::class);
         config(['database.default'=>'sqlite','database.connections.sqlite.database'=>':memory:','session.driver'=>'array']);
         DB::purge('sqlite');
         $this->testPublic=storage_path('framework/testing/finance-'.bin2hex(random_bytes(6)));
@@ -456,7 +458,11 @@ class FinanceSimulationTest extends TestCase
         $this->assertSame(1, (int) $extra->id_customer);
         $this->assertSame(250000, (int) $extra->sisa_bayar);
         $this->assertSame((int) $original->nominal, (int) DB::table('piutang')->where('id', $original->id)->value('nominal'));
-        $this->getJson(route('piutang.show', $original->id))->assertOk()->assertJsonPath('can_additional', true);
+        $detail = $this->getJson(route('piutang.show', $original->id))->assertOk()->assertJsonPath('can_additional', true);
+        $components = collect($detail->json('purchase_components'));
+        $this->assertTrue($components->contains('id', $extra->id));
+        $this->assertSame((int) DB::table('piutang')->where('id_customer', 1)->sum('sisa_bayar'), (int) $components->sum('sisa_bayar'));
+        $this->assertSame(250000, (int) $components->firstWhere('id', $extra->id)['nominal']);
         $view = file_get_contents(resource_path('views/admin/pembayaran/detail.blade.php'));
         $this->assertStringContainsString('- Pembayaran -', $view);
         $this->assertStringNotContainsString('Tambah Tagihan', $view);

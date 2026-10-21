@@ -55,5 +55,10 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class, 'id_role');
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role?->role === 'Super Admin';
+    }
+
     public $timestamps = false;
 }

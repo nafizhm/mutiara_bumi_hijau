@@ -13,6 +13,7 @@ class ReceivablePaymentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\QueueChanges::class);
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:', 'session.driver' => 'array']);
         DB::purge('sqlite');
         Schema::create('users', function (Blueprint $t) {
@@ -104,6 +105,28 @@ class ReceivablePaymentTest extends TestCase
     private function payment(array $overrides = []): array
     {
         return $overrides + ['tanggal' => '2026-10-20', 'nominal' => 250000, 'id_bank' => 9, 'keterangan' => 'Angsuran piutang'];
+    }
+
+    public function test_sales_components_appear_as_one_package_with_aggregate_status_and_detail(): void
+    {
+        DB::table('piutang')->where('id', 3)->update(['terbayar' => 1000000, 'sisa_bayar' => 0, 'status' => 2]);
+        DB::table('piutang')->insert([
+            'id' => 4, 'id_customer' => 7, 'id_bank' => 9, 'deskripsi' => 'Biaya surat tambahan',
+            'tanggal_piutang' => '2026-10-21', 'nominal' => 250000, 'terbayar' => 0, 'sisa_bayar' => 250000, 'status' => 1,
+        ]);
+        $headers = ['X-Requested-With' => 'XMLHttpRequest'];
+        $this->getJson('/admin/keuangan/piutang?draw=1&start=0&length=10', $headers)
+            ->assertOk()->assertJsonPath('recordsTotal', 3)->assertJsonCount(3, 'data');
+        $this->getJson('/admin/keuangan/piutang?draw=1&start=0&length=10&sumber=penjualan&status=belum', $headers)
+            ->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.nominal', 'Rp 1.250.000')
+            ->assertJsonPath('data.0.terbayar', 'Rp 1.000.000')
+            ->assertJsonPath('data.0.sisa_bayar', 'Rp 250.000');
+        $this->getJson('/admin/keuangan/piutang?draw=1&start=0&length=10&sumber=penjualan&status=lunas', $headers)
+            ->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/admin/keuangan/piutang/3')->assertOk()
+            ->assertJsonCount(2, 'purchase_components')
+            ->assertJsonPath('data.nominal', 1250000)->assertJsonPath('data.sisa_bayar', 250000);
     }
 
     public function test_partial_payment_and_settlement_are_reflected_in_history_and_income(): void
