@@ -341,6 +341,32 @@
 
                         {{-- Body: Tabel --}}
                         <div class="card-body p-0">
+                            <form method="GET" action="{{ route('dashboard') }}#statistik-marketing" id="statistik-marketing" class="p-3 border-bottom">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm-4">
+                                        <label for="marketing-year" class="form-label">Tahun</label>
+                                        <select name="marketing_year" id="marketing-year" class="form-select">
+                                            <option value="0">Semua tahun</option>
+                                            @foreach ($marketingYears as $year)
+                                                <option value="{{ $year }}" @selected(($marketingFilters['marketing_year'] ?? 0) == $year)>{{ $year }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-5">
+                                        <label for="marketing-location" class="form-label">Lokasi kavling</label>
+                                        <select name="marketing_location" id="marketing-location" class="form-select">
+                                            <option value="0">Semua lokasi</option>
+                                            @foreach ($marketingLocations as $location)
+                                                <option value="{{ $location->id }}" @selected(($marketingFilters['marketing_location'] ?? 0) == $location->id)>{{ $location->nama_kavling }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <button type="submit" class="btn btn-success w-100">Terapkan</button>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">Tahun berdasarkan tanggal transaksi. Jumlah dan persentase dihitung dari customer sesuai filter.</small>
+                            </form>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped table-hover mb-0 align-middle">
                                     <thead>
@@ -360,7 +386,7 @@
                                                 <td class="text-end">{{ $marketing['jumlah'] }}</td>
                                                 <td class="text-end">{{ $marketing['persentase'] }} %</td>
                                                 <td class="text-center">
-                                                    <a href="{{ route('dashboard.customer-marketing-show', $marketing['id_marketing']) }}"
+                                                    <a href="{{ route('dashboard.customer-marketing-show', ['id' => $marketing['id_marketing']] + $marketingFilters) }}"
                                                         class="btn btn-success btn-sm text-white rounded-pill px-3">
                                                         Detail
                                                     </a>

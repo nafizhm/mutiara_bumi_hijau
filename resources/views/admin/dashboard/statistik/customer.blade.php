@@ -8,7 +8,7 @@
                         <h3 class="font-weight-bold text-xl">Data Customer berdasarkan {{ $scope }}
                             {{ $nama }}</h3>
                         <div class="d-flex align-items-center">
-                            <a href="{{ route('dashboard') }}" class="btn btn-secondary align-items-center d-flex btn-sm"><i
+                            <a href="{{ route('dashboard', request()->only(['marketing_year', 'marketing_location'])) }}" class="btn btn-secondary align-items-center d-flex btn-sm"><i
                                     class="fas fa-arrow-left mr-2"></i>
                                 Kembali</a>
                             <a href="javascript:void(0);" onclick="reloadTable()"
@@ -44,7 +44,7 @@
             let table = $('.data-table').DataTable({
                 processing: true,
                 serverSide: true,
-                ajax: "{{ route(Route::currentRouteName(), ['id' => $status_progres_id ?? $marketing_id]) }}",
+                ajax: @json(route(Route::currentRouteName(), ['id' => $status_progres_id ?? $marketing_id] + request()->only(['marketing_year', 'marketing_location']))),
                 columns: [{
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',

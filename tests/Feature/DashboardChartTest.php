@@ -65,4 +65,31 @@ class DashboardChartTest extends TestCase
         $empty = $controller->chart1(Request::create('/', 'GET', ['tahun' => 2024]))->getData(true);
         $this->assertSame(array_fill(0, 12, 0), $empty);
     }
+
+    public function test_marketing_statistics_require_year_and_location_on_the_same_transaction(): void
+    {
+        Schema::table('customer', fn (Blueprint $table) => $table->integer('id_lokasi')->default(1));
+        Schema::table('transaksi_kavling', fn (Blueprint $table) => $table->integer('id_kavling')->default(1));
+        Schema::create('kavling_peta', function (Blueprint $table) {
+            $table->id();
+            $table->integer('id_lokasi');
+        });
+        DB::table('kavling_peta')->insert([
+            ['id' => 1, 'id_lokasi' => 1], ['id' => 2, 'id_lokasi' => 2],
+        ]);
+        DB::table('transaksi_kavling')->insert([
+            'id_customer' => 1, 'id_kavling' => 2, 'tgl_terima' => '2025-01-01',
+        ]);
+        DB::table('customer')->insert(['id' => 4, 'id_marketing' => 11, 'stt_arsip' => 0, 'id_lokasi' => 2]);
+        $method = new \ReflectionMethod(DashboardController::class, 'filterMarketingCustomers');
+        $ids = function (array $filters) use ($method) {
+            return $method->invoke(app(DashboardController::class), \App\Models\Customer::where('stt_arsip', 0), $filters)
+                ->orderBy('id')->pluck('id')->all();
+        };
+        $this->assertSame([1, 2, 4], $ids([]));
+        $this->assertSame([1, 2], $ids(['marketing_year' => 2026, 'marketing_location' => 1]));
+        $this->assertSame([], $ids(['marketing_year' => 2026, 'marketing_location' => 2]));
+        $this->assertSame([1], $ids(['marketing_year' => 2025, 'marketing_location' => 2]));
+        $this->assertSame([1, 4], $ids(['marketing_location' => 2]));
+    }
 }

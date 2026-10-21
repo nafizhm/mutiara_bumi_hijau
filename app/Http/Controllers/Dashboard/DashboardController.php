@@ -19,7 +19,7 @@ use Yajra\DataTables\Facades\DataTables;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         if (! Auth::check()) {
             return redirect()->route('login')->withError('Silahkan Login terlebih dahulu');
@@ -134,11 +134,20 @@ class DashboardController extends Controller
 
         $marketingList  = Marketing::all();
         $dataMarketing  = [];
+        $marketingFilters = $this->marketingFilters($request);
+        $marketingCustomers = $this->filterMarketingCustomers(Customer::where('stt_arsip', 0), $marketingFilters);
+        $totalMarketingCustomers = (clone $marketingCustomers)->count();
+        $marketingCounts = (clone $marketingCustomers)->selectRaw('id_marketing, COUNT(*) as total')
+            ->groupBy('id_marketing')->pluck('total', 'id_marketing');
+        $marketingLocations = LokasiKavling::orderBy('urutan')->orderBy('nama_kavling')->get();
+        $marketingYears = TransaksiKavling::whereNotNull('tgl_terima')->pluck('tgl_terima')
+            ->map(fn ($date) => (int) substr($date, 0, 4))
+            ->push(now('Asia/Jakarta')->year)->filter()->unique()->sortDesc()->values();
 
         $noMarketing = 1;
         foreach ($marketingList as $marketing) {
-            $jumlah     = Customer::where('stt_arsip', 0)->where('id_marketing', $marketing->id)->count();
-            $persentase = $totalCustomer > 0 ? round(($jumlah / $totalCustomer) * 100) : 0;
+            $jumlah     = (int) ($marketingCounts[$marketing->id] ?? 0);
+            $persentase = $totalMarketingCustomers > 0 ? round(($jumlah / $totalMarketingCustomers) * 100) : 0;
 
             $dataMarketing[] = [
                 'no'           => $noMarketing++,
@@ -166,6 +175,9 @@ class DashboardController extends Controller
             'totalData',
             'dataProgres',
             'dataMarketing',
+            'marketingFilters',
+            'marketingLocations',
+            'marketingYears',
             'marketingList',
             'years'
         ));
@@ -368,6 +380,7 @@ class DashboardController extends Controller
                 'nama'              => $getName->status_progres ?? '-',
             ];
         } elseif ($routeName === 'dashboard.customer-marketing-show') {
+            $this->filterMarketingCustomers($query, $this->marketingFilters(request()));
             $query->where('id_marketing', $id);
             $getName  = Marketing::where('id', $id)->first();
             $viewData = [
@@ -438,6 +451,32 @@ class DashboardController extends Controller
         }
 
         return view('admin.dashboard.statistik.customer', $viewData);
+    }
+
+    private function marketingFilters(Request $request): array
+    {
+        return $request->validate([
+            'marketing_year' => 'nullable|integer|min:0|max:9999',
+            'marketing_location' => 'nullable|integer|min:0',
+        ]);
+    }
+
+    private function filterMarketingCustomers($query, array $filters)
+    {
+        $year = (int) ($filters['marketing_year'] ?? 0);
+        $location = (int) ($filters['marketing_location'] ?? 0);
+        if ($year || $location) {
+            $query->where(function ($query) use ($year, $location) {
+                $query->whereHas('kavling', function ($lots) use ($year, $location) {
+                    if ($year) $lots->whereYear('transaksi_kavling.tgl_terima', $year);
+                    if ($location) $lots->where('kavling_peta.id_lokasi', $location);
+                });
+                if ($location && !$year) {
+                    $query->orWhere(fn ($legacy) => $legacy->whereDoesntHave('kavling')->where('id_lokasi', $location));
+                }
+            });
+        }
+        return $query;
     }
 
     public function chart1(Request $request)
