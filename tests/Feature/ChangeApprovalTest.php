@@ -40,6 +40,55 @@ class ChangeApprovalTest extends TestCase
             ->assertStatus(202)->assertJsonPath('pending_approval', true);
     }
 
+    public function test_disabled_edit_runs_immediately_while_enabled_delete_still_needs_approval(): void
+    {
+        Schema::create('approval_settings', function (Blueprint $t) {
+            $t->string('menu')->primary(); $t->boolean('edit'); $t->boolean('hapus');
+        });
+        DB::table('approval_settings')->insert(['menu' => 'bank.index', 'edit' => 0, 'hapus' => 1]);
+        preg_match('/const approvalRoutes = (.*);/', view('admin.approvals.reason-script')->render(), $matches);
+        $bankRules = array_values(array_filter(json_decode($matches[1], true), fn ($rule) => str_contains($rule['path'], '/bank/')));
+        $this->assertSame(['DELETE'], array_column($bankRules, 'method'));
+        $this->putJson(route('bank.update', 1), ['nama' => 'Langsung', 'no_rek' => '123', 'pemilik_rek' => 'Pemilik'])->assertOk();
+        $this->assertDatabaseHas('bank', ['nama' => 'Langsung']);
+        $this->assertDatabaseCount('change_requests', 0);
+        $this->deleteJson(route('bank.destroy', 1))->assertUnprocessable();
+        $this->deleteJson(route('bank.destroy', 1), ['approval_reason' => 'Hapus rekening lama'])->assertStatus(202);
+        $this->assertDatabaseCount('bank', 1);
+        $this->assertDatabaseCount('change_requests', 1);
+    }
+
+    public function test_only_superadmin_and_director_can_save_approval_settings(): void
+    {
+        Schema::table('menu', function (Blueprint $t) {
+            $t->string('title')->default('Bank'); $t->integer('edit')->default(1);
+            $t->integer('hapus')->default(0); $t->integer('id_parent')->default(0); $t->integer('urutan')->default(0);
+        });
+        Schema::create('approval_settings', function (Blueprint $t) {
+            $t->string('menu')->primary(); $t->boolean('edit'); $t->boolean('hapus');
+        });
+        $this->get(route('approval-settings.index'))->assertForbidden();
+        $this->put(route('approval-settings.update'), ['settings' => [1 => ['edit' => 1]]])->assertForbidden();
+        DB::table('role')->insert(['id' => 5, 'role' => 'Direktur']);
+        DB::table('users')->insert(['id' => 3, 'username' => 'direktur', 'id_role' => 5]);
+        foreach ([2, 3] as $id) {
+            $this->actingAs(User::find($id));
+            $template = file_get_contents(resource_path('views/admin/pengaturan/approval_settings.blade.php'));
+            preg_match('/<form\b.*?<\/form>/s', $template, $form);
+            $html = \Illuminate\Support\Facades\Blade::render($form[0], [
+                'menus' => \App\Services\ApprovalSettings::menus(), 'rules' => [],
+            ]);
+            preg_match_all('/name="(settings[^\"]+)"/', $html, $fields);
+            parse_str(implode('&', array_map(fn ($name) => urlencode($name).'=1', $fields[1])), $payload);
+            $this->assertSame(['settings' => [1 => ['edit' => '1']]], $payload);
+            $this->put(route('approval-settings.update'), $payload)->assertSessionHasNoErrors()->assertRedirect();
+            $this->put(route('approval-settings.update'), ['settings' => [1 => ['edit' => 1, 'hapus' => 1]]])->assertRedirect(route('approval-settings.index'));
+            $this->assertDatabaseHas('approval_settings', ['menu' => 'bank.index', 'edit' => 1, 'hapus' => 0]);
+            $this->put(route('approval-settings.update'), [])->assertRedirect();
+            $this->assertDatabaseHas('approval_settings', ['menu' => 'bank.index', 'edit' => 0, 'hapus' => 0]);
+        }
+    }
+
     public function test_director_can_access_and_approve_requests(): void
     {
         $this->submitEdit();
@@ -82,7 +131,7 @@ class ChangeApprovalTest extends TestCase
     public function test_delete_is_queued_and_reason_script_renders(): void
     {
         $html = view('admin.approvals.reason-script')->render();
-        $this->assertStringContainsString('const specialPosts', $html);
+        $this->assertStringContainsString('const approvalRoutes', $html);
         $this->deleteJson(route('bank.destroy', 1), ['approval_reason' => 'Rekening sudah tidak dipakai'])->assertStatus(202);
         $this->assertDatabaseHas('bank', ['id' => 1]);
         $this->assertDatabaseHas('change_requests', ['action' => 'hapus', 'status' => 'pending']);

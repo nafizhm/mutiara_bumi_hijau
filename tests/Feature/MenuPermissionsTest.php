@@ -61,7 +61,7 @@ class MenuPermissionsTest extends TestCase
             $menu = MenuAccess::menu($request);
             if (!$menu) {
                 // Approval routes enforce the Super Admin role in the controller.
-                $this->assertTrue($route->getControllerClass() === null || in_array(class_basename($route->getControllerClass()), ['AuthController', 'ChangeRequestController']), $route->uri());
+                $this->assertTrue($route->getControllerClass() === null || in_array(class_basename($route->getControllerClass()), ['AuthController', 'ChangeRequestController', 'ApprovalSettingsController']), $route->uri());
                 continue;
             }
             DB::table('hak_akses')->update(['lihat' => 0, 'tambah' => 0, 'edit' => 0, 'hapus' => 0]);

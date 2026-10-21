@@ -653,6 +653,21 @@
                                 $getmenus->push($activityMenu);
                             }
                             $currentRoute = request()->route()->getName();
+                            if (auth()->user()->canApproveChanges()) {
+                                $approvalSettingsMenu = new \App\Models\Menu([
+                                    'title' => 'Pengaturan Persetujuan', 'route_name' => 'approval-settings.index',
+                                    'icon' => 'bi bi-check2-square', 'urutan' => 999,
+                                ]);
+                                $settingsParent = $getmenus->first(fn ($item) => Str::contains(strtolower($item->title ?? ''), 'pengaturan'));
+                                if ($settingsParent) {
+                                    $settingsParent->setRelation('children', $settingsParent->children
+                                        ->reject(fn ($child) => $child->route_name === 'approval-settings.index')->push($approvalSettingsMenu));
+                                } else {
+                                    $settingsParent = new \App\Models\Menu(['title' => 'Pengaturan', 'route_name' => '#', 'icon' => 'bi bi-gear']);
+                                    $settingsParent->setRelation('children', collect([$approvalSettingsMenu]));
+                                    $getmenus->push($settingsParent);
+                                }
+                            }
                             $tahunAjaranList = session('tahunAjaranList');
                         @endphp
 

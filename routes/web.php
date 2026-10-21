@@ -53,6 +53,8 @@ Route::group(['middleware' => 'guest'], function () {
 });
 
 Route::middleware(['auth', \App\Http\Middleware\AuthorizeMenu::class, \App\Http\Middleware\QueueChanges::class])->prefix('admin')->group(function () {
+    Route::get('pengaturan-persetujuan', [\App\Http\Controllers\Pengaturan\ApprovalSettingsController::class, 'index'])->name('approval-settings.index');
+    Route::put('pengaturan-persetujuan', [\App\Http\Controllers\Pengaturan\ApprovalSettingsController::class, 'update'])->name('approval-settings.update');
     Route::get('persetujuan', [\App\Http\Controllers\ChangeRequestController::class, 'index'])->name('approvals.index');
     Route::get('status-persetujuan', [\App\Http\Controllers\ChangeRequestController::class, 'statuses'])->name('approvals.statuses');
     Route::get('persetujuan/{change}', [\App\Http\Controllers\ChangeRequestController::class, 'show'])->name('approvals.show');

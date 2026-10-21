@@ -12,7 +12,7 @@ class QueueChanges
     public function handle(Request $request, Closure $next)
     {
         if (!$request->user() || $request->user()->isSuperAdmin() || $request->isMethodSafe()
-            || !MenuAccess::menu($request) || !in_array(MenuAccess::ability($request), ['edit', 'hapus'])) {
+            || !\App\Services\ApprovalSettings::required(MenuAccess::menu($request), MenuAccess::ability($request))) {
             return $next($request);
         }
         $request->merge(['approval_reason' => trim((string) $request->input('approval_reason', $request->header('X-Approval-Reason')))]);

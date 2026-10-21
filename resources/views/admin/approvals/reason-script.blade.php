@@ -3,21 +3,33 @@
 @endauth
 @if(auth()->check() && !auth()->user()->isSuperAdmin())
 @php
-    $approvalPostRoutes = collect(\Illuminate\Support\Facades\Route::getRoutes())
-        ->filter(fn($r) => in_array('POST', $r->methods()) && in_array($r->getActionMethod(), ['tambahPemasukan', 'tambahTagihan', 'importExcel', 'restore', 'kirimKwitansi', 'kirimPesanWa']))
-        ->map(fn($r) => '/'.$r->uri())->values();
-    $approvalAdminPath = parse_url(url('/admin'), PHP_URL_PATH);
+    $configuredApprovalRules = \App\Services\ApprovalSettings::rules();
+    $approvalSettingsInstalled = \Illuminate\Support\Facades\Schema::hasTable('approval_settings');
+    $approvalRoutes = [];
+    foreach (\Illuminate\Support\Facades\Route::getRoutes() as $approvalRoute) {
+        foreach (array_intersect($approvalRoute->methods(), ['POST', 'PUT', 'PATCH', 'DELETE']) as $approvalMethod) {
+            $approvalRequest = \Illuminate\Http\Request::create('/', $approvalMethod);
+            $approvalRequest->setRouteResolver(fn () => $approvalRoute);
+            $approvalMenu = \App\Services\MenuAccess::menu($approvalRequest);
+            $approvalAbility = \App\Services\MenuAccess::ability($approvalRequest);
+            if ($approvalMenu && in_array($approvalAbility, ['edit', 'hapus'])
+                && (!$approvalSettingsInstalled || ($configuredApprovalRules[$approvalMenu][$approvalAbility] ?? false))) {
+                $approvalRoutes[] = ['path' => '/'.$approvalRoute->uri(), 'method' => $approvalMethod];
+            }
+        }
+    }
 @endphp
 <script>
 (() => {
-    const specialPosts = @json($approvalPostRoutes);
+    const approvalRoutes = @json($approvalRoutes);
+    if (location.pathname === new URL(@json(route('approval-settings.index')), location.href).pathname) return;
     function needsReason(url, method) {
         const path = new URL(url || location.href, location.href).pathname;
-        if (!path.startsWith(@json($approvalAdminPath) + '/')) return false;
-        if (['PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) return true;
-        return method.toUpperCase() === 'POST' && specialPosts.some(pattern => {
-            const escaped = pattern.split('/').map(part => part.startsWith('{') ? '[^/]+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('/');
-            return new RegExp('^' + escaped + '$').test(path);
+        return approvalRoutes.some(rule => {
+            if (rule.method !== method.toUpperCase()) return false;
+            const pattern = new URL(rule.path.replace(/\{[^}]+\}/g, '__PARAM__'), location.origin).pathname;
+            const escaped = pattern.split('/').map(part => part === '__PARAM__' ? '[^/]+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('/');
+            return new RegExp('^' + escaped + '/?$').test(path);
         });
     }
     function reason() {
