@@ -17,6 +17,9 @@ class PenggunaController extends Controller
 {
     public function index(Request $request)
     {
+        if (!$request->user()->canApproveChanges()) {
+            return view('admin.pengaturan.pengguna.profile', ['user' => $request->user()]);
+        }
         $permissions = HakAksesController::getUserPermissions();
 
         if ($request->ajax()) {
@@ -80,6 +83,7 @@ class PenggunaController extends Controller
 
     public function edit($id)
     {
+        abort_unless(Auth::user()->canApproveChanges() || (string) Auth::id() === (string) $id, 403);
         $list = User::find($id);
 
         if (! $list) {
@@ -99,6 +103,7 @@ class PenggunaController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless($request->user()->canApproveChanges(), 403);
         $request->validate([
             'surname'      => 'required',
             'username'     => 'required|unique:users,username',
@@ -172,7 +177,22 @@ class PenggunaController extends Controller
 
     public function update(Request $request, $id)
     {
+        $selfOnly = !$request->user()->canApproveChanges();
+        abort_unless(!$selfOnly || (string) $request->user()->id === (string) $id, 403);
         $data = User::findOrFail($id);
+
+        if ($selfOnly) {
+            $validated = $request->validate([
+                'surname' => 'required|string|max:255',
+                'username' => 'required|string|max:255|unique:users,username,'.$data->id,
+                'email' => 'required|email|max:255|unique:users,email,'.$data->id,
+                'password' => 'nullable|string|min:6',
+            ]);
+            if (!$request->filled('password')) unset($validated['password']);
+            $data->update($validated);
+            if ($request->expectsJson()) return response()->json(['success' => true, 'message' => 'Profil berhasil diubah.']);
+            return redirect()->route('pengguna.index')->with('success', 'Profil berhasil diubah.');
+        }
 
         $request->validate([
             'surname'      => 'required',
@@ -236,6 +256,7 @@ class PenggunaController extends Controller
 
     public function destroy($id)
     {
+        abort_unless(Auth::user()->canApproveChanges(), 403);
         try {
             $data = User::findOrFail($id);
             HakAkses::where('id_user', $data->id)->delete();

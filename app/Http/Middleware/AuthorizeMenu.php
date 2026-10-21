@@ -11,6 +11,13 @@ class AuthorizeMenu
     public function handle(Request $request, Closure $next)
     {
         $controller = class_basename($request->route()->getControllerClass() ?? '');
+        $selfProfile = false;
+        if ($controller === 'PenggunaController' && !$request->user()->canApproveChanges()) {
+            $action = $request->route()->getActionMethod();
+            $selfProfile = in_array($action, ['edit', 'update'], true)
+                && (string) $request->route('pengguna') === (string) $request->user()->id;
+            abort_unless($action === 'index' || $selfProfile, 403, 'Anda hanya dapat mengelola profil sendiri.');
+        }
         $menu = \App\Services\MenuAccess::menu($request);
         if (!$menu) {
             return $next($request);
@@ -20,7 +27,7 @@ class AuthorizeMenu
             abort_unless(\App\Services\ReceivablePayment::canPay($request->user()->id), 403);
             return $next($request);
         }
-        $ability = \App\Services\MenuAccess::ability($request);
+        $ability = $selfProfile ? 'lihat' : \App\Services\MenuAccess::ability($request);
         $menus = $ability === 'lihat' ? \App\Services\MenuAccess::readMenus($request) : [$menu];
         $allowed = DB::table('hak_akses as h')->join('menu as m', 'm.id', '=', 'h.id_menu')
             ->where('h.id_user', $request->user()->id)->whereIn('m.route_name', $menus)

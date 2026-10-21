@@ -30,7 +30,8 @@ class MenuPermissionsTest extends TestCase
             $id = DB::table('menu')->insertGetId(['route_name' => $name]);
             DB::table('hak_akses')->insert(['id_user' => 1, 'id_menu' => $id]);
         }
-        $this->actingAs((new User)->forceFill(['id' => 1, 'username' => 'tester']));
+        $this->actingAs((new User)->forceFill(['id' => 1, 'username' => 'tester'])
+            ->setRelation('role', (new \App\Models\Role)->forceFill(['role' => 'Super Admin'])));
     }
 
     private function requestFor($route): Request
